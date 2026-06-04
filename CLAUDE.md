@@ -45,6 +45,19 @@ These are the learning objectives. If Claude writes this code, the project is po
 
 4. **Point to resources.** Claude should reference nanoGPT, the "Attention Is All You Need" paper, Chinchilla paper, relevant sections — teach you to fish.
 
+## Learning Style Preferences
+
+These preferences apply to all explanations, visualizations, and docs in this project.
+
+- **Visual HTML docs over walls of text.** When explaining a concept that warrants more than a few paragraphs, build it as an HTML page in `docs/`. Dark theme, sidebar navigation, visual components (bar charts, grids, pipelines) — not a markdown wall.
+- **Docs-style layout with sidebar.** Any multi-section explainer should have a fixed sidebar with nav links and scroll-based active highlighting so sections are easy to jump between.
+- **Analogies first, math last.** Lead with a real-world analogy before any technical explanation. Formulas go in collapsible spoilers (a small subtle `∑` symbol trigger) — visible if wanted, ignorable if not.
+- **Q&A goes into the doc, not the chat.** When a question is asked about a concept that already has an explainer page, add the answer as a new section in that page rather than just replying in chat. The doc becomes the living reference.
+- **No-code explanations for conceptual topics.** When the question is "how does X work", the answer should have zero code unless specifically asked. Pseudocode or plain English only.
+- **Examples over definitions.** Show what something does before defining what it is. "The Eiffel Tower is 330m tall" → vector, not "a vector is a mathematical construct..."
+- **No em dashes.** Do not use — anywhere. Rewrite the sentence instead.
+- **No patronising headings.** Headings should be plain and descriptive. Never write headings like "You're Ready to Write Code!" or "The Magic of Attention" or anything that talks down to the reader. Assume the reader is smart.
+
 ## Project Connections
 
 This project connects to:

@@ -1,0 +1,25 @@
+# datasets — too large for git
+data/openwebtext/
+data/train.bin
+data/val.bin
+
+# checkpoints
+checkpoints/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# wandb
+wandb/
+
+# jupyter
+.ipynb_checkpoints/
+
+# misc
+.DS_Store
+*.swp

@@ -1,0 +1,2448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Language Models Work</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --sidebar-w: 240px;
+    --bg: #0f1117;
+    --surface: #1e293b;
+    --border: #1e293b;
+    --border-light: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --dim: #64748b;
+    --accent: #818cf8;
+    --accent-soft: #a5b4fc;
+    --green: #34d399;
+    --pink: #f472b6;
+    --yellow: #fbbf24;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    background: #0b0e15;
+    padding: 24px 0 40px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-logo {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .sidebar-logo span {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .sidebar-logo p {
+    font-size: 0.72rem;
+    color: var(--dim);
+    margin-top: 2px;
+  }
+
+  .nav-group {
+    margin-bottom: 6px;
+  }
+
+  .nav-group-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dim);
+    padding: 10px 20px 4px;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 20px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+
+  .nav-link:hover {
+    color: var(--text);
+    background: rgba(129,140,248,0.06);
+  }
+
+  .nav-link.active {
+    color: var(--accent-soft);
+    border-left-color: var(--accent);
+    background: rgba(129,140,248,0.08);
+  }
+
+  .nav-link .badge {
+    font-size: 0.62rem;
+    background: #312e81;
+    color: var(--accent-soft);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-weight: 600;
+    margin-left: auto;
+  }
+
+  .nav-link .badge.qa {
+    background: #1a2e1a;
+    color: #86efac;
+  }
+
+  /* ── MAIN ── */
+  .main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    max-width: 820px;
+    padding: 0 48px 120px;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 64px 0 40px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .hero-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  .hero h1 {
+    font-size: 2.4rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, #818cf8, #a78bfa, #f472b6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1.2;
+    margin-bottom: 14px;
+  }
+
+  .hero p {
+    font-size: 1rem;
+    color: var(--muted);
+    max-width: 520px;
+  }
+
+  /* ── SECTIONS ── */
+  .section {
+    padding-top: 72px;
+  }
+
+  .section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .section h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 14px;
+    scroll-margin-top: 24px;
+  }
+
+  .section p {
+    color: var(--muted);
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+  }
+
+  .section p strong { color: var(--text); }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 16px;
+  }
+
+  .card h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-bottom: 8px;
+  }
+
+  .card p { font-size: 0.875rem; color: var(--muted); margin: 0; }
+
+  /* ── PIPELINE ── */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+  }
+
+  .pipe-box {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-size: 0.83rem;
+    color: var(--text);
+    text-align: center;
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .pipe-box.highlight {
+    background: #312e81;
+    border-color: var(--accent);
+    color: #c7d2fe;
+  }
+
+  .pipe-arrow { color: #475569; font-size: 1.1rem; flex-shrink: 0; }
+
+  /* ── TOKENS ── */
+  .token-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+
+  .token {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 0.875rem;
+    color: var(--accent-soft);
+    font-weight: 600;
+  }
+
+  .token .id {
+    display: block;
+    font-size: 0.68rem;
+    color: var(--dim);
+    font-weight: 400;
+    margin-top: 2px;
+    text-align: center;
+  }
+
+  /* ── EMBEDDINGS ── */
+  .embed-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .embed-word {
+    background: #312e81;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 7px 14px;
+    color: #c7d2fe;
+    font-weight: 600;
+    min-width: 72px;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+
+  .embed-arrow { color: #475569; font-size: 1rem; }
+
+  .embed-vector {
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 0.73rem;
+    color: var(--dim);
+    font-family: monospace;
+  }
+
+  .embed-vector span { color: var(--green); }
+
+  /* ── ATTENTION MATRIX ── */
+  .attn-grid { display: grid; gap: 3px; margin-top: 14px; width: fit-content; }
+  .attn-row { display: flex; gap: 3px; }
+
+  .attn-cell {
+    width: 46px;
+    height: 34px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    font-weight: 600;
+  }
+
+  .attn-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    color: var(--dim);
+    width: 46px;
+    height: 34px;
+  }
+
+  /* ── LOSS ── */
+  .loss-demo {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .loss-card {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  .loss-card h4 { font-size: 0.82rem; color: var(--muted); margin-bottom: 10px; }
+
+  .word-scores { display: flex; flex-direction: column; gap: 6px; }
+
+  .word-score-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+  }
+
+  .word-score-label { width: 56px; color: var(--text); }
+  .word-score-bar-wrap { flex: 1; background: #0f172a; border-radius: 4px; height: 13px; overflow: hidden; }
+  .word-score-bar { height: 100%; border-radius: 4px; }
+  .word-score-pct { width: 32px; text-align: right; color: var(--dim); font-size: 0.72rem; }
+
+  .correct-word { color: var(--green) !important; }
+  .correct-bar { background: #059669; }
+  .wrong-bar { background: #334155; }
+
+  .loss-value { margin-top: 12px; font-size: 0.82rem; color: var(--muted); }
+  .loss-value strong { font-size: 1.05rem; }
+  .loss-high { color: #f87171; }
+  .loss-low { color: var(--green); }
+
+  /* ── LOOP STEPS ── */
+  .loop-steps {
+    display: flex;
+    flex-direction: column;
+    margin-top: 18px;
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .loop-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .loop-step:last-child { border-bottom: none; }
+
+  .step-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .step-content h4 { font-size: 0.9rem; font-weight: 600; color: #f1f5f9; margin-bottom: 3px; }
+  .step-content p { font-size: 0.82rem; color: var(--dim); margin: 0; }
+
+  .step-content .example {
+    margin-top: 6px;
+    background: #0f172a;
+    border-left: 2px solid var(--border-light);
+    padding: 5px 9px;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .s1 .step-num { background: #312e81; color: var(--accent-soft); }
+  .s2 .step-num { background: #4c1d95; color: #c4b5fd; }
+  .s3 .step-num { background: #701a75; color: #f0abfc; }
+  .s4 .step-num { background: #7f1d1d; color: #fca5a5; }
+  .s5 .step-num { background: #14532d; color: #86efac; }
+
+  /* ── ANALOGY ── */
+  .analogy {
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin-top: 18px;
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+
+  .analogy strong { color: var(--accent-soft); }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 0.85rem; }
+
+  th {
+    background: var(--surface);
+    color: var(--muted);
+    text-align: left;
+    padding: 9px 13px;
+    font-weight: 600;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  td { padding: 9px 13px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: top; }
+  td:first-child { color: var(--accent-soft); font-weight: 600; }
+
+  /* ── DIVIDER ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin-top: 64px; }
+
+  /* ── FLASH ATTENTION BOX ── */
+  .flash-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 18px;
+  }
+
+  .flash-box {
+    border-radius: 10px;
+    padding: 18px;
+    border: 1px solid;
+  }
+
+  .flash-box h3 { font-size: 0.88rem; font-weight: 600; margin-bottom: 10px; }
+  .flash-box p { font-size: 0.82rem; color: var(--muted); margin: 0 0 6px; }
+  .flash-box .tag {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    margin-top: 6px;
+  }
+
+  .flash-slow { background: #1c1117; border-color: #7f1d1d; }
+  .flash-slow h3 { color: #fca5a5; }
+  .flash-slow .tag { background: #7f1d1d; color: #fca5a5; }
+
+  .flash-fast { background: #0f1f10; border-color: #14532d; }
+  .flash-fast h3 { color: #86efac; }
+  .flash-fast .tag { background: #14532d; color: #86efac; }
+
+  /* ── LATENCY BARS ── */
+  .latency-bars { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .lat-row { display: flex; align-items: center; gap: 10px; font-size: 0.82rem; }
+  .lat-label { width: 170px; color: var(--muted); }
+  .lat-track { flex: 1; background: #0f172a; border-radius: 4px; height: 18px; overflow: hidden; }
+  .lat-bar { height: 100%; border-radius: 4px; }
+  .lat-val { width: 56px; font-size: 0.78rem; text-align: right; }
+
+  /* ── MOBILE ── */
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 0 20px 80px; }
+    .loss-demo, .flash-compare { grid-template-columns: 1fr; }
+    .pipeline { flex-direction: column; }
+  }
+
+  /* scrollbar */
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+  /* ── FORMULA SPOILER ── */
+  .formula-spoiler {
+    display: inline-block;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  .formula-spoiler summary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #64748b;
+    font-size: 0.75rem;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .formula-spoiler summary::-webkit-details-marker { display: none; }
+
+  .formula-spoiler summary:hover {
+    color: var(--accent-soft);
+    border-color: var(--accent);
+  }
+
+  .formula-spoiler[open] summary {
+    color: var(--accent-soft);
+    border-color: var(--accent);
+    background: #1a1f3a;
+  }
+
+  .formula-box {
+    margin-top: 10px;
+    background: #0b0e15;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-family: 'Georgia', serif;
+    font-size: 0.95rem;
+    color: #c7d2fe;
+    line-height: 2;
+  }
+
+  .formula-box .formula-name {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 6px;
+  }
+
+  .formula-box .fml {
+    color: #e2e8f0;
+    font-size: 1rem;
+  }
+
+  .formula-box .fml em { color: #a78bfa; font-style: normal; }
+  .formula-box .fml .op { color: #f472b6; }
+  .formula-box .fml .num { color: #34d399; }
+  .formula-box .annotation {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 0.75rem;
+    color: var(--dim);
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     SIDEBAR
+══════════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <span>LLM Internals</span>
+    <p>A visual guide from scratch</p>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Overview</div>
+    <a class="nav-link" href="#overview">The one-sentence version</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Core Pipeline</div>
+    <a class="nav-link" href="#tokenization">Step 1: Tokenization</a>
+    <a class="nav-link" href="#embeddings">Step 2: Embeddings</a>
+    <a class="nav-link" href="#attention">Step 3: Attention</a>
+    <a class="nav-link" href="#flash-attention">↳ Flash Attention <span class="badge">variant</span></a>
+    <a class="nav-link" href="#mlp">Step 3.5: MLP</a>
+    <a class="nav-link" href="#blocks">Step 4: Transformer Blocks</a>
+    <a class="nav-link" href="#loss">Step 5: Loss</a>
+    <a class="nav-link" href="#backprop">Step 6: Backpropagation</a>
+    <a class="nav-link" href="#gradient-descent">Step 7: Gradient Descent + AdamW</a>
+    <a class="nav-link" href="#adamw-deep">↳ AdamW internals <span class="badge">detail</span></a>
+    <a class="nav-link" href="#training-loop">Training Loop</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Reference</div>
+    <a class="nav-link" href="#glossary">Glossary table</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Practical Concepts</div>
+    <a class="nav-link" href="#q-rag">RAG &amp; embeddings</a>
+    <a class="nav-link" href="#q-training-cost">Training cost &amp; VRAM</a>
+    <a class="nav-link" href="#q-context">Context size &amp; KV cache</a>
+    <a class="nav-link" href="#q-data">Data gathering &amp; cleaning</a>
+    <a class="nav-link" href="#q-finetune-vs-train">Finetune vs train from scratch</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Q &amp; A</div>
+    <a class="nav-link" href="#q-what-is-transformer">What is a Transformer? <span class="badge qa">Q</span></a>
+    <a class="nav-link" href="#q-bpe">New words &amp; BPE <span class="badge qa">Q</span></a>
+    <a class="nav-link" href="#q-standardize">Why not standardize embeddings? <span class="badge qa">Q</span></a>
+    <a class="nav-link" href="#q-quant-vs-small">Q4 large vs full-precision small <span class="badge qa">Q</span></a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Next</div>
+    <a class="nav-link" href="#attention-code">↳ CausalSelfAttention</a>
+    <a class="nav-link" href="#mlp-code">↳ MLP</a>
+    <a class="nav-link" href="#block-code">↳ TransformerBlock</a>
+    <a class="nav-link" href="#gpt-code">↳ GPT</a>
+    <a class="nav-link" href="#next">Start writing code</a>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════
+     MAIN CONTENT
+══════════════════════════════════════ -->
+<main class="main">
+
+  <div class="hero">
+    <div class="hero-eyebrow">Visual guide · No prerequisites</div>
+    <h1>How Language Models Work</h1>
+    <p>From raw text to a transformer that predicts the next word — every step explained visually. No background required.</p>
+  </div>
+
+  <!-- LANDING -->
+  <div class="section" id="landing" style="border-bottom:1px solid var(--border-light);padding-bottom:40px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px">
+      <div style="background:var(--surface);border-radius:8px;padding:16px 18px;border-left:3px solid var(--accent)">
+        <div style="font-size:0.72rem;color:var(--accent-soft);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">What this is</div>
+        <p style="font-size:0.85rem;color:var(--muted);line-height:1.6;margin:0">A ground-up explanation of transformer-based language models. Covers the full pipeline: tokenization, embeddings, attention, training, and the code that implements it.</p>
+      </div>
+      <div style="background:var(--surface);border-radius:8px;padding:16px 18px;border-left:3px solid var(--green)">
+        <div style="font-size:0.72rem;color:#6ee7b7;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Who it's for</div>
+        <p style="font-size:0.85rem;color:var(--muted);line-height:1.6;margin:0">Anyone who finds research papers and walls of equations hard to start with. Concepts come first with visuals, math is optional in collapsible spoilers.</p>
+      </div>
+      <div style="background:var(--surface);border-radius:8px;padding:16px 18px;border-left:3px solid var(--yellow)">
+        <div style="font-size:0.72rem;color:var(--yellow);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">How to read it</div>
+        <p style="font-size:0.85rem;color:var(--muted);line-height:1.6;margin:0">Read top to bottom. Hover highlighted terms for plain-English definitions. Code sections marked <span style="background:#1e3a5f;color:#93c5fd;padding:1px 6px;border-radius:3px;font-size:0.75rem">Deep Dive</span> are optional — skip them on a first pass.</p>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border-radius:8px;padding:16px 20px">
+      <div style="font-size:0.72rem;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px">What you'll understand by the end</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px">
+        <div style="font-size:0.82rem;color:var(--muted)">✓ &nbsp;How text becomes numbers a model can use</div>
+        <div style="font-size:0.82rem;color:var(--muted)">✓ &nbsp;What attention actually computes</div>
+        <div style="font-size:0.82rem;color:var(--muted)">✓ &nbsp;How training adjusts the weights</div>
+        <div style="font-size:0.82rem;color:var(--muted)">✓ &nbsp;Why scaling laws mean bigger isn't always better</div>
+        <div style="font-size:0.82rem;color:var(--muted)">✓ &nbsp;How to read the nanoGPT codebase</div>
+        <div style="font-size:0.82rem;color:var(--muted)">✓ &nbsp;What KV cache is and why it fills your VRAM</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div class="section" id="overview">
+    <div class="section-label">Overview</div>
+    <h2>The one-sentence version</h2>
+    <p>A language model is a machine that looks at a sequence of words and guesses what comes next. That's all it does. Training is just doing this billions of times, being wrong, and slowly getting less wrong.</p>
+
+    <div class="pipeline">
+      <div class="pipe-box">"The cat sat on the"</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box highlight">Model</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box">"mat" (most likely)</div>
+    </div>
+
+    <style>
+      @keyframes flow-pulse {
+        0%   { opacity: 0.3; transform: scaleX(0.6); }
+        50%  { opacity: 1;   transform: scaleX(1); }
+        100% { opacity: 0.3; transform: scaleX(0.6); }
+      }
+      @keyframes step-glow {
+        0%, 100% { box-shadow: 0 0 0 0 transparent; }
+        50%       { box-shadow: 0 0 0 3px rgba(129,140,248,0.4); }
+      }
+      @keyframes token-pop {
+        0%   { opacity: 0; transform: translateY(6px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
+      .animated-pipeline { display: flex; align-items: center; gap: 0; margin-top: 28px; flex-wrap: wrap; gap: 0; overflow-x: auto; padding-bottom: 8px; }
+      .ap-step { background: var(--surface); border: 1px solid var(--border-light); border-radius: 8px; padding: 12px 16px; text-align: center; min-width: 110px; animation: step-glow 3s ease-in-out infinite; }
+      .ap-step:nth-child(1) { animation-delay: 0s; }
+      .ap-step:nth-child(3) { animation-delay: 0.6s; }
+      .ap-step:nth-child(5) { animation-delay: 1.2s; }
+      .ap-step:nth-child(7) { animation-delay: 1.8s; }
+      .ap-step:nth-child(9) { animation-delay: 2.4s; }
+      .ap-step-label { font-size: 0.68rem; color: var(--dim); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
+      .ap-step-val { font-size: 0.8rem; color: var(--text); font-weight: 600; }
+      .ap-arrow { display: flex; align-items: center; padding: 0 6px; }
+      .ap-arrow-line { height: 2px; width: 28px; background: linear-gradient(90deg, #334155, var(--accent), #334155); background-size: 200% 100%; animation: flow-pulse 1.8s ease-in-out infinite; }
+      .ap-arrow:nth-child(2)  .ap-arrow-line { animation-delay: 0.3s; }
+      .ap-arrow:nth-child(4)  .ap-arrow-line { animation-delay: 0.9s; }
+      .ap-arrow:nth-child(6)  .ap-arrow-line { animation-delay: 1.5s; }
+      .ap-arrow:nth-child(8)  .ap-arrow-line { animation-delay: 2.1s; }
+    </style>
+
+    <div class="animated-pipeline">
+      <div class="ap-step">
+        <div class="ap-step-label">Input</div>
+        <div class="ap-step-val">"The cat sat"</div>
+      </div>
+      <div class="ap-arrow"><div class="ap-arrow-line"></div></div>
+      <div class="ap-step">
+        <div class="ap-step-label">Tokenizer</div>
+        <div class="ap-step-val">[464, 3797, 3332]</div>
+      </div>
+      <div class="ap-arrow"><div class="ap-arrow-line"></div></div>
+      <div class="ap-step">
+        <div class="ap-step-label">Embeddings</div>
+        <div class="ap-step-val">3 × 768 vectors</div>
+      </div>
+      <div class="ap-arrow"><div class="ap-arrow-line"></div></div>
+      <div class="ap-step" style="border-color:var(--accent);animation-delay:1.8s">
+        <div class="ap-step-label">12 × Block</div>
+        <div class="ap-step-val">Attn + MLP</div>
+      </div>
+      <div class="ap-arrow"><div class="ap-arrow-line"></div></div>
+      <div class="ap-step">
+        <div class="ap-step-label">Output</div>
+        <div class="ap-step-val">"on" (next token)</div>
+      </div>
+    </div>
+    <p style="font-size:0.75rem;color:var(--dim);margin-top:8px">Each section below covers one of these steps in detail.</p>
+
+  </div>
+
+  <!-- TOKENIZATION -->
+  <div class="section" id="tokenization">
+    <div class="section-label">Step 1</div>
+    <h2>Words become numbers (Tokenization)</h2>
+    <p>Computers don't understand text. So the first step is converting every word (or word-piece) into a number called a <strong>token ID</strong>. This mapping is fixed: it's the vocabulary, like a dictionary with ~50,000 entries.</p>
+
+    <div class="token-row">
+      <div class="token">The<span class="id">464</span></div>
+      <div class="token">cat<span class="id">3797</span></div>
+      <div class="token">sat<span class="id">3332</span></div>
+      <div class="token">on<span class="id">319</span></div>
+      <div class="token">the<span class="id">262</span></div>
+      <div class="token">mat<span class="id">2603</span></div>
+    </div>
+
+    <p style="margin-top:14px">The model only ever sees these numbers. The vocabulary maps number ↔ word so you can convert back at the end.</p>
+  </div>
+
+  <!-- EMBEDDINGS -->
+  <div class="section" id="embeddings">
+    <div class="section-label">Step 2</div>
+    <h2>Numbers become vectors (Embeddings)</h2>
+    <p>Token ID 3797 ("cat") is just a number with no meaning. So each ID is looked up in a giant table that converts it into a <strong>vector</strong>: a list of ~768 numbers that the model learns meaning into over training.</p>
+    <p>Think of a vector as a point in 768-dimensional space. After training, words with similar meanings end up close together in that space.</p>
+
+    <div class="embed-row">
+      <div class="embed-word">cat</div>
+      <div class="embed-arrow">→</div>
+      <div class="embed-vector">[<span>0.21, -0.84, 0.13, 0.67, -0.02, ...</span> × 768]</div>
+    </div>
+    <div class="embed-row">
+      <div class="embed-word">dog</div>
+      <div class="embed-arrow">→</div>
+      <div class="embed-vector">[<span>0.19, -0.81, 0.11, 0.65, -0.01, ...</span> × 768]</div>
+    </div>
+    <div class="embed-row">
+      <div class="embed-word">car</div>
+      <div class="embed-arrow">→</div>
+      <div class="embed-vector">[<span>-0.55, 0.32, 0.74, -0.12, 0.88, ...</span> × 768]</div>
+    </div>
+
+    <p style="margin-top:14px">"cat" and "dog" vectors are similar (both animals). "car" is very different. The model learns this on its own. Nobody labels it.</p>
+  </div>
+
+  <!-- ATTENTION -->
+  <div class="section" id="attention">
+    <div class="section-label">Step 3</div>
+    <h2>Tokens look at each other (Attention)
+      <details class="formula-spoiler">
+        <summary title="Show formula">∑</summary>
+        <div class="formula-box">
+          <div class="formula-name">Scaled dot-product attention</div>
+          <div class="fml">Attention(<em>Q</em>, <em>K</em>, <em>V</em>) <span class="op">=</span> softmax<span class="op">(</span><em>Q</em><em>K</em><sup>T</sup> <span class="op">/</span> <span class="num">√d<sub>k</sub></span><span class="op">)</span> · <em>V</em></div>
+          <div class="annotation">
+            Q = query, K = key, V = value (all linear projections of the input).<br>
+            d<sub>k</sub> = head dimension (e.g. 64). Dividing stabilises gradients for large d<sub>k</sub>.<br>
+            Softmax converts raw scores into weights that sum to 1.<br>
+            Causal mask sets future positions to −∞ before softmax so they become 0.
+          </div>
+        </div>
+      </details>
+    </h2>
+    <p>Now the model has a sequence of vectors, one per token. Each token is still isolated at this point. "sat" doesn't know it's <em>the cat</em> that's sitting. Attention fixes this.</p>
+    <p><strong>For every token, attention asks: "which other tokens are most relevant to understanding me right now?"</strong> It then mixes in information from those tokens proportionally.</p>
+    <p style="margin-top:8px">Example: <em>"The bank by the river was flooded"</em>. "bank" needs to figure out it means riverbank, not a financial bank. Attention lets it look at "river" and "flooded" and weight them heavily.</p>
+
+    <div style="overflow-x:auto; margin-top:20px">
+      <p style="font-size:0.78rem; color:var(--dim); margin-bottom:10px">Hover a row to see what that word pays attention to. Brighter = more attention.</p>
+
+      <style>
+        @keyframes cell-fade-in { from { opacity:0; transform:scale(0.85); } to { opacity:1; transform:scale(1); } }
+        .iattn-grid { display: inline-grid; grid-template-columns: 72px repeat(4, 58px); gap: 3px; }
+        .iattn-hdr  { height: 32px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: var(--dim); font-weight: 600; transition: color 0.2s; }
+        .iattn-row-label { height: 48px; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; font-size: 0.82rem; color: var(--muted); font-weight: 600; cursor: default; border-radius: 5px; transition: background 0.2s, color 0.2s; }
+        .iattn-cell { height: 48px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; transition: transform 0.15s, filter 0.2s, opacity 0.2s; cursor: default; }
+        .iattn-row:hover .iattn-row-label { background: #1e293b; color: #e2e8f0; }
+        .iattn-row:hover .iattn-hdr-col   { color: #e2e8f0; }
+        .iattn-grid.has-hover .iattn-cell  { opacity: 0.25; filter: saturate(0.3); }
+        .iattn-grid.has-hover .iattn-row:hover .iattn-cell { opacity: 1; filter: saturate(1); transform: scale(1.06); animation: cell-fade-in 0.18s ease-out; }
+        .iattn-hint { font-size: 0.7rem; color: var(--dim); margin-top: 6px; }
+      </style>
+
+      <div class="iattn-grid" id="iattn">
+        <!-- header row -->
+        <div class="iattn-hdr"></div>
+        <div class="iattn-hdr" data-col="0">The</div>
+        <div class="iattn-hdr" data-col="1">bank</div>
+        <div class="iattn-hdr" data-col="2">river</div>
+        <div class="iattn-hdr" data-col="3">flooded</div>
+        <!-- row: The -->
+        <div class="iattn-row" style="display:contents" data-row="0">
+          <div class="iattn-row-label">The</div>
+          <div class="iattn-cell" style="background:#1e3a5f;color:#93c5fd">0.6</div>
+          <div class="iattn-cell" style="background:#172554;color:#60a5fa">0.3</div>
+          <div class="iattn-cell" style="background:#0f172a;color:#475569">0.1</div>
+          <div class="iattn-cell" style="background:#0f172a;color:#334155">0.0</div>
+        </div>
+        <!-- row: bank -->
+        <div class="iattn-row" style="display:contents" data-row="1">
+          <div class="iattn-row-label">bank</div>
+          <div class="iattn-cell" style="background:#172554;color:#60a5fa">0.1</div>
+          <div class="iattn-cell" style="background:#1e3a5f;color:#93c5fd">0.2</div>
+          <div class="iattn-cell" style="background:#1e40af;color:#bfdbfe">0.5</div>
+          <div class="iattn-cell" style="background:#1d4ed8;color:#dbeafe">0.5</div>
+        </div>
+        <!-- row: river -->
+        <div class="iattn-row" style="display:contents" data-row="2">
+          <div class="iattn-row-label">river</div>
+          <div class="iattn-cell" style="background:#0f172a;color:#475569">0.1</div>
+          <div class="iattn-cell" style="background:#1e3a5f;color:#93c5fd">0.6</div>
+          <div class="iattn-cell" style="background:#172554;color:#60a5fa">0.2</div>
+          <div class="iattn-cell" style="background:#0f172a;color:#475569">0.1</div>
+        </div>
+        <!-- row: flooded -->
+        <div class="iattn-row" style="display:contents" data-row="3">
+          <div class="iattn-row-label">flooded</div>
+          <div class="iattn-cell" style="background:#0f172a;color:#334155">0.0</div>
+          <div class="iattn-cell" style="background:#1e40af;color:#bfdbfe">0.5</div>
+          <div class="iattn-cell" style="background:#1d4ed8;color:#dbeafe">0.4</div>
+          <div class="iattn-cell" style="background:#172554;color:#60a5fa">0.1</div>
+        </div>
+      </div>
+      <p class="iattn-hint">Sentence: "The bank by the river was flooded" — hover each word to see where its attention goes.</p>
+    </div>
+
+    <script>
+      (function() {
+        const grid = document.getElementById('iattn');
+        const rows = grid.querySelectorAll('.iattn-row');
+        rows.forEach(row => {
+          row.addEventListener('mouseenter', () => grid.classList.add('has-hover'));
+          row.addEventListener('mouseleave', () => grid.classList.remove('has-hover'));
+        });
+      })();
+    </script>
+
+    <p style="margin-top:14px">After attention, each token's vector is a <em>blend</em> of the whole context, weighted by relevance. "bank" now has "river" and "flooded" baked into it.</p>
+    <p><strong>Multi-head attention</strong> means this happens 12 times in parallel with different "questions" each time. One head might track grammar, another entities, another positional relationships.</p>
+  </div>
+
+  <!-- FLASH ATTENTION -->
+  <div class="section" id="flash-attention">
+    <div class="section-label">Variant</div>
+    <h2>Flash Attention</h2>
+    <p>Flash Attention computes the exact same result as standard attention. The difference is purely about <strong>how it runs on a GPU</strong>.</p>
+    <p>Standard attention writes the full Q×K score matrix to GPU memory (VRAM) before computing the softmax. For a 1024-token sequence with 12 heads, this matrix gets large fast, and shuttling data back and forth to VRAM is slow. That memory bottleneck, not the computation itself, is what limits speed.</p>
+
+    <div class="flash-compare">
+      <div class="flash-box flash-slow">
+        <h3>Standard attention</h3>
+        <p>Computes all Q×K scores at once, writes the full matrix to VRAM, reads it back for softmax, then multiplies by V.</p>
+        <p>Memory usage scales with sequence length squared: 1024 tokens → 1M cells per head.</p>
+        <span class="tag">Memory bottleneck</span>
+      </div>
+      <div class="flash-box flash-fast">
+        <h3>Flash Attention</h3>
+        <p>Tiles the computation into small blocks that fit in the GPU's fast on-chip cache (SRAM). Never writes the big matrix to VRAM.</p>
+        <p>Same output numbers. 2–4× faster. Uses far less memory and enables much longer sequences.</p>
+        <span class="tag">2–4× faster</span>
+      </div>
+    </div>
+
+    <p style="margin-top:16px">In nanoGPT, you get Flash Attention for free on PyTorch 2.0+. The code calls <code style="background:var(--surface);padding:2px 6px;border-radius:4px;color:var(--accent-soft)">F.scaled_dot_product_attention(..., is_causal=True)</code> and PyTorch uses the optimized kernel automatically. If that function is unavailable, it falls back to the slow manual version with the same numerical output, just slower.</p>
+  </div>
+
+  <!-- MLP -->
+  <div class="section" id="mlp">
+    <div class="section-label">Step 3.5</div>
+    <h2>Each token thinks for itself (MLP)</h2>
+    <p>After attention has mixed information between tokens, each token's vector is passed through a small feedforward network called the <strong>MLP</strong> (Multi-Layer Perceptron). This happens independently for every token — no communication between positions here.</p>
+    <p>The structure is two linear layers with a nonlinearity in between:</p>
+
+    <div class="pipeline" style="flex-direction:column; align-items:stretch; margin-top:14px">
+      <div class="pipe-box">Token vector (768 dimensions)</div>
+      <div class="pipe-arrow" style="text-align:center">↓</div>
+      <div class="pipe-box">Linear layer: expand to 3072 dimensions (4×)</div>
+      <div class="pipe-arrow" style="text-align:center">↓</div>
+      <div class="pipe-box highlight">GELU nonlinearity</div>
+      <div class="pipe-arrow" style="text-align:center">↓</div>
+      <div class="pipe-box">Linear layer: compress back to 768 dimensions</div>
+      <div class="pipe-arrow" style="text-align:center">↓</div>
+      <div class="pipe-box">Token vector out (768 dimensions)</div>
+    </div>
+
+    <p style="margin-top:14px">The expansion to 4× gives the network room to compute functions that a single linear layer could not. A linear layer by itself can only learn straight-line relationships. The GELU nonlinearity breaks that constraint, letting the MLP approximate much more complex transformations.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">Split of responsibility between attention and MLP</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px">
+      <div class="card">
+        <h3>Attention</h3>
+        <p>Moves information between tokens. Decides what context each token should gather from the rest of the sequence. Operates across positions.</p>
+      </div>
+      <div class="card">
+        <h3>MLP</h3>
+        <p>Processes information within each token. Takes the context-enriched vector from attention and computes what it means. Operates per position independently.</p>
+      </div>
+    </div>
+
+    <p style="margin-top:14px">Mechanistic interpretability research (primarily from Anthropic) suggests the MLP layers are where most factual knowledge is stored. If you ablate specific MLP neurons you can selectively remove specific facts from the model's output — things like "the capital of France is Paris" appear to live in particular MLP weights rather than in the attention patterns. Attention handles structure and routing; MLP handles knowledge retrieval and computation.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">Why GELU specifically</h3>
+    <p>ReLU was the standard nonlinearity for years: it outputs 0 for negative inputs and the input itself for positive inputs. GELU (Gaussian Error Linear Unit) is a smoother version that doesn't hard-clip to zero — it tapers off gradually for negative values. Empirically GELU trains better for language models, which is why GPT-2 and most transformers since have used it. The difference in practice is small but consistent enough that GELU became the default.</p>
+  </div>
+
+  <!-- TRANSFORMER BLOCKS -->
+  <div class="section" id="blocks">
+    <div class="section-label">Step 4</div>
+    <h2>This repeats 12 times (Transformer Blocks)</h2>
+    <p>One pass of attention + a small feedforward network is called a <strong>block</strong>. The model stacks 12 of these blocks on top of each other. Each reads the output of the previous one.</p>
+    <p>Early blocks catch simple patterns. Later blocks catch abstract reasoning.</p>
+
+    <div class="pipeline" style="flex-direction:column; align-items:stretch">
+      <div class="pipe-box">Block 1: spelling, common phrases</div>
+      <div class="pipe-arrow" style="text-align:center">↓</div>
+      <div class="pipe-box">Block 2–6: grammar, syntax, entities</div>
+      <div class="pipe-arrow" style="text-align:center">↓</div>
+      <div class="pipe-box highlight">Block 7–12: meaning, facts, reasoning</div>
+      <div class="pipe-arrow" style="text-align:center">↓</div>
+      <div class="pipe-box">Output: predict next token</div>
+    </div>
+
+  </div>
+
+  <!-- LOSS -->
+  <div class="section" id="loss">
+    <div class="section-label">Step 5</div>
+    <h2>How wrong was the guess? (Loss)
+      <details class="formula-spoiler">
+        <summary title="Show formula">∑</summary>
+        <div class="formula-box">
+          <div class="formula-name">Cross-entropy loss</div>
+          <div class="fml">L <span class="op">=</span> <span class="op">−</span>log<span class="op">(</span><em>p</em><sub>correct</sub><span class="op">)</span></div>
+          <div class="annotation">
+            p<sub>correct</sub> = the probability the model gave to the actual next token.<br>
+            If the model said "mat" has 4% probability → L = −log(0.04) ≈ 3.22.<br>
+            If the model said "mat" has 72% probability → L = −log(0.72) ≈ 0.33.<br>
+            In practice averaged over all tokens in the batch.
+          </div>
+        </div>
+      </details>
+    </h2>
+    <p>After the model produces scores for all 50,000 possible next tokens, we compare against the <strong>actual</strong> next token. The resulting score is called <strong>loss</strong>. High loss means a bad prediction, low loss means a good one.</p>
+    <p>The function used is <strong>cross-entropy</strong>: it punishes you more the lower the probability you gave to the correct answer.</p>
+
+    <div class="loss-demo">
+      <div class="loss-card">
+        <h4>Early training</h4>
+        <div class="word-scores">
+          <div class="word-score-row">
+            <span class="word-score-label correct-word">mat ✓</span>
+            <div class="word-score-bar-wrap"><div class="word-score-bar correct-bar" style="width:4%"></div></div>
+            <span class="word-score-pct">4%</span>
+          </div>
+          <div class="word-score-row">
+            <span class="word-score-label">floor</span>
+            <div class="word-score-bar-wrap"><div class="word-score-bar wrong-bar" style="width:35%"></div></div>
+            <span class="word-score-pct">35%</span>
+          </div>
+          <div class="word-score-row">
+            <span class="word-score-label">dog</span>
+            <div class="word-score-bar-wrap"><div class="word-score-bar wrong-bar" style="width:28%"></div></div>
+            <span class="word-score-pct">28%</span>
+          </div>
+          <div class="word-score-row">
+            <span class="word-score-label">roof</span>
+            <div class="word-score-bar-wrap"><div class="word-score-bar wrong-bar" style="width:18%"></div></div>
+            <span class="word-score-pct">18%</span>
+          </div>
+        </div>
+        <div class="loss-value">Loss: <strong class="loss-high">3.22</strong></div>
+      </div>
+
+      <div class="loss-card">
+        <h4>After training</h4>
+        <div class="word-scores">
+          <div class="word-score-row">
+            <span class="word-score-label correct-word">mat ✓</span>
+            <div class="word-score-bar-wrap"><div class="word-score-bar correct-bar" style="width:72%"></div></div>
+            <span class="word-score-pct">72%</span>
+          </div>
+          <div class="word-score-row">
+            <span class="word-score-label">floor</span>
+            <div class="word-score-bar-wrap"><div class="word-score-bar wrong-bar" style="width:14%"></div></div>
+            <span class="word-score-pct">14%</span>
+          </div>
+          <div class="word-score-row">
+            <span class="word-score-label">dog</span>
+            <div class="word-score-bar-wrap"><div class="word-score-bar wrong-bar" style="width:4%"></div></div>
+            <span class="word-score-pct">4%</span>
+          </div>
+          <div class="word-score-row">
+            <span class="word-score-label">roof</span>
+            <div class="word-score-bar-wrap"><div class="word-score-bar wrong-bar" style="width:10%"></div></div>
+            <span class="word-score-pct">10%</span>
+          </div>
+        </div>
+        <div class="loss-value">Loss: <strong class="loss-low">0.33</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BACKPROP -->
+  <div class="section" id="backprop">
+    <div class="section-label">Step 6</div>
+    <h2>Figure out who's to blame (Backpropagation)
+      <details class="formula-spoiler">
+        <summary title="Show formula">∑</summary>
+        <div class="formula-box">
+          <div class="formula-name">Chain rule (the engine of backprop)</div>
+          <div class="fml">∂L<span class="op">/</span>∂<em>w</em> <span class="op">=</span> ∂L<span class="op">/</span>∂<em>y</em> · ∂<em>y</em><span class="op">/</span>∂<em>w</em></div>
+          <div class="annotation">
+            ∂L/∂w = how much does loss change if we nudge weight w?<br>
+            Computed by multiplying gradients backwards layer by layer.<br>
+            PyTorch builds a computation graph during the forward pass and traverses it in reverse with loss.backward().<br>
+            You never write this. It's automatic.
+          </div>
+        </div>
+      </details>
+    </h2>
+    <p>The model has millions of weights, which are the numbers inside all those matrix multiplications. When it makes a bad prediction, <strong>which weights caused the error?</strong></p>
+    <p>Backpropagation answers this using the chain rule from calculus. Starting from the loss, it works backwards through every operation and computes a <strong>gradient</strong> for each weight: if you increase this weight slightly, does the loss go up or down?</p>
+    <p>You don't write this. PyTorch does it automatically with <code style="background:var(--surface);padding:2px 6px;border-radius:4px;color:var(--accent-soft)">loss.backward()</code>.</p>
+  </div>
+
+  <!-- GRADIENT DESCENT -->
+  <div class="section" id="gradient-descent">
+    <div class="section-label">Step 7</div>
+    <h2>Fix the weights (Gradient Descent + AdamW)
+      <details class="formula-spoiler">
+        <summary title="Show formula">∑</summary>
+        <div class="formula-box">
+          <div class="formula-name">Basic gradient descent</div>
+          <div class="fml"><em>w</em> <span class="op">←</span> <em>w</em> <span class="op">−</span> <span class="num">η</span> · ∂L<span class="op">/</span>∂<em>w</em></div>
+          <div class="annotation">
+            η (eta) = learning rate, controls step size.<br>
+            w = weight. ∂L/∂w = gradient from backprop.<br><br>
+          </div>
+          <div class="formula-name" style="margin-top:10px">AdamW update (simplified)</div>
+          <div class="fml"><em>m</em> <span class="op">←</span> β₁<em>m</em> <span class="op">+</span> (1<span class="op">−</span>β₁)·g &nbsp;&nbsp; <span style="color:#64748b;font-size:0.8rem">// momentum</span></div>
+          <div class="fml"><em>v</em> <span class="op">←</span> β₂<em>v</em> <span class="op">+</span> (1<span class="op">−</span>β₂)·g² &nbsp;&nbsp;<span style="color:#64748b;font-size:0.8rem">// variance</span></div>
+          <div class="fml"><em>w</em> <span class="op">←</span> <em>w</em> <span class="op">−</span> <span class="num">η</span> · <em>m̂</em><span class="op">/</span>(√<em>v̂</em> <span class="op">+</span> ε)</div>
+          <div class="annotation">
+            g = gradient. β₁ ≈ 0.9, β₂ ≈ 0.999 (nanoGPT defaults).<br>
+            m = running mean of gradients (momentum). v = running variance.<br>
+            Dividing by √v̂ makes steps smaller for weights that fluctuate wildly.
+          </div>
+        </div>
+      </details>
+    </h2>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-bottom:10px">What a gradient actually is</h3>
+    <p>A gradient is a rate of change, which is just a slope. If you nudge a weight by a tiny amount and the loss changes a lot, that weight has a steep gradient. If the loss barely moves, the gradient is nearly flat.</p>
+    <p>But the model has millions of weights. So instead of a single slope, you get a <strong>gradient for every weight</strong>, computed simultaneously by backpropagation. Each one answers the same question: "for this specific weight, does a small increase make the loss go up or down, and by how much?"</p>
+
+    <p style="margin-top:12px">Think of it this way. Imagine loss as a surface plotted against just two weights:</p>
+
+    <div style="background:#0b0e15;border:1px solid #334155;border-radius:8px;padding:18px;margin-top:12px;font-family:monospace;font-size:0.78rem;line-height:1.8;color:#64748b;overflow-x:auto">
+      <div style="color:#475569;margin-bottom:6px">loss surface (two weights, simplified)</div>
+      <div>
+        <span style="color:#334155">high │</span><span style="color:#7f1d1d">██</span><span style="color:#991b1b">█</span><span style="color:#b91c1c">█</span><span style="color:#dc2626">▓</span><span style="color:#ef4444">▒</span><span style="color:#f87171">░</span><span style="color:#fca5a5">&nbsp;·&nbsp;</span><span style="color:#f87171">░</span><span style="color:#ef4444">▒</span><span style="color:#dc2626">▓</span>
+      </div>
+      <div>
+        <span style="color:#334155">     │</span><span style="color:#991b1b">█</span><span style="color:#b91c1c">█</span><span style="color:#dc2626">▓</span><span style="color:#ef4444">▒</span><span style="color:#f87171">░</span><span style="color:#fca5a5">&nbsp;·&nbsp;·&nbsp;</span><span style="color:#f87171">░</span><span style="color:#ef4444">▒</span>
+      </div>
+      <div>
+        <span style="color:#334155">loss │</span><span style="color:#b91c1c">▓</span><span style="color:#ef4444">▒</span><span style="color:#f87171">░</span><span style="color:#fca5a5">&nbsp;·&nbsp;·&nbsp;·&nbsp;</span><span style="color:#34d399">&nbsp;★&nbsp;</span><span style="color:#fca5a5">&nbsp;·&nbsp;</span><span style="color:#f87171">░</span>
+      </div>
+      <div>
+        <span style="color:#334155">     │</span><span style="color:#ef4444">▒</span><span style="color:#f87171">░</span><span style="color:#fca5a5">&nbsp;·&nbsp;·&nbsp;·&nbsp;·&nbsp;</span><span style="color:#fca5a5">&nbsp;·&nbsp;·&nbsp;</span><span style="color:#f87171">░</span>
+      </div>
+      <div>
+        <span style="color:#334155"> low │</span><span style="color:#f87171">░</span><span style="color:#fca5a5">&nbsp;·&nbsp;·&nbsp;·&nbsp;·&nbsp;·&nbsp;·&nbsp;·&nbsp;</span><span style="color:#f87171">░</span>
+      </div>
+      <div style="color:#334155">      └─────────────────────── weight value</div>
+      <div style="margin-top:6px;color:#34d399">★ = minimum (what training is trying to find)</div>
+    </div>
+
+    <p style="margin-top:14px">Every point on that surface is a combination of weight values with a corresponding loss. The gradient at your current position tells you which direction is uphill for each weight. You move in the <strong>opposite</strong> direction to go downhill, toward lower loss.</p>
+
+    <p>In reality, there are millions of weights, not two. You can't visualize it, but the math works the same way: each weight has its own slope at the current position, and you step each one downhill simultaneously.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">The learning rate problem</h3>
+    <p>The gradient tells you the direction, not how far to step. That's the learning rate (η). If you step too far, you overshoot the minimum and bounce around. Too small and you'll converge, but it'll take 10× as long.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:14px">
+      <div class="card">
+        <h3>Too large</h3>
+        <p>Steps overshoot the minimum. Loss bounces up and down instead of converging. Training becomes unstable or diverges entirely.</p>
+      </div>
+      <div class="card" style="border-color:var(--green)">
+        <h3 style="color:var(--green)">Just right</h3>
+        <p>Loss decreases steadily each step. The model converges to a good minimum in a reasonable number of steps.</p>
+      </div>
+      <div class="card">
+        <h3>Too small</h3>
+        <p>Steps are so tiny that training takes 10× longer than needed. Also risks getting stuck in shallow local minima.</p>
+      </div>
+    </div>
+
+    <p style="margin-top:14px">nanoGPT doesn't use a fixed learning rate. It uses a <strong>cosine schedule</strong>: start at the peak rate, decay it slowly following a cosine curve down to near zero by the end of training. This gets the fast early progress of a high rate and the precise final convergence of a low rate.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">Why plain gradient descent isn't enough</h3>
+    <p>Basic gradient descent uses the gradient from the current batch only. That gradient is noisy: one batch of 512 tokens isn't a perfect representation of the whole dataset, so the gradient direction is slightly wrong every step. You end up taking many jagged steps instead of going straight to the minimum.</p>
+    <p>nanoGPT uses <strong>AdamW</strong>, which fixes two things:</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+      <div class="card">
+        <h3>Momentum</h3>
+        <p>Keeps a running average of recent gradients. If the gradient has pointed in the same direction for many steps, that direction gets more weight. Single noisy steps don't throw it off course.</p>
+      </div>
+      <div class="card">
+        <h3>Per-weight learning rate</h3>
+        <p>Tracks how much each weight has been updated recently. Weights that change constantly get a smaller step. Weights that rarely update get a bigger one. Each weight effectively self-tunes its own step size.</p>
+      </div>
+    </div>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">Plain gradient descent vs AdamW, framed as an algorithms problem</h3>
+    <p>Plain gradient descent works correctly but wastes steps, for the same reason random sort does. It gets to the answer eventually, but ignores information that was always available and could make it faster.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+      <div class="card">
+        <h3>Random sort / plain GD</h3>
+        <p>Picks elements without using information about the data. Each step is computed in isolation, throwing away everything learned from previous steps. Correct, but inefficient.</p>
+      </div>
+      <div class="card">
+        <h3>Quicksort / AdamW</h3>
+        <p>Exploits structure that was always there. AdamW uses the history of gradient directions (momentum) and the history of per-weight volatility (adaptive rate). Same information, used instead of discarded.</p>
+      </div>
+    </div>
+
+    <p style="margin-top:14px">The analogy breaks down in one place: quicksort is provably optimal for comparison sorts, but AdamW is not the final word on optimizers. Newer ones like Adafactor, SOAP, and Muon improve on it in various ways. The optimizer space is still active research in a way that sorting algorithms mostly are not.</p>
+
+  </div>
+
+  <!-- ADAMW DEEP DIVE -->
+  <div class="section" id="adamw-deep">
+    <div class="section-label">Detail</div>
+    <h2>AdamW internals</h2>
+
+    <p>AdamW is built on top of Adam, which itself is built on top of plain gradient descent. Each layer adds one mechanism that fixes a specific problem with the layer below it.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:20px;margin-bottom:10px">Layer 1: plain gradient descent</h3>
+    <p>Take the gradient, multiply by the learning rate, subtract from the weight. Simple, but the gradient is noisy (it's computed from one small batch) and every weight uses the same step size regardless of how different their gradients are.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:20px;margin-bottom:10px">Layer 2: momentum (the first moment)</h3>
+    <p>Instead of using the raw gradient directly, keep a running exponential average of all past gradients. Call this <strong>m</strong> (the first moment).</p>
+    <p>The effect: if the gradient has been pointing in roughly the same direction for many steps, <strong>m</strong> builds up in that direction. One noisy batch pointing the wrong way barely moves it. This smooths out the jagged path that plain gradient descent takes.</p>
+    <p>The decay factor β₁ (typically 0.9) controls how much history to remember. β₁ = 0.9 means each step, the old average counts for 90% and the new gradient counts for 10%.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:20px;margin-bottom:10px">Layer 3: adaptive learning rate (the second moment)</h3>
+    <p>Keep a second running average, this time of the <strong>squared</strong> gradient. Call this <strong>v</strong> (the second moment, also called the variance estimate).</p>
+    <p>A weight that consistently has large gradients will have a large <strong>v</strong>. Dividing the step by √v shrinks that weight's effective learning rate automatically. A weight that rarely updates has a small <strong>v</strong>, so its effective learning rate stays larger.</p>
+    <p>This is what "adaptive" means in Adam: each of the model's millions of weights ends up with a different effective step size, tuned automatically based on its own gradient history. You set one global learning rate and the optimizer distributes it sensibly.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:20px;margin-bottom:10px">The W in AdamW: decoupled weight decay</h3>
+    <p>Weight decay is a regularization technique that shrinks all weights slightly toward zero every step, which prevents them from growing arbitrarily large and overfitting. In the original Adam, weight decay was implemented by adding it to the gradient before the update. This created a bug: the adaptive learning rate then scaled the weight decay differently for each weight, meaning weights that updated rarely got much less regularization than weights that updated often. The regularization was uneven.</p>
+    <p>AdamW fixes this by applying weight decay <strong>directly to the weights</strong>, completely separately from the gradient update step. The decay is now uniform across all weights regardless of their gradient history. This is the only difference between Adam and AdamW, but it consistently improves generalization in practice, which is why AdamW replaced Adam as the default for language models.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">Is AdamW still the best?</h3>
+    <p>For most LLM training runs it's still the default. LLaMA, Mistral, and most public models use it. But it has real challengers:</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+      <div class="card">
+        <h3>Muon (2024)</h3>
+        <p>Uses Nesterov momentum with an orthogonalization step that makes gradient updates more geometrically uniform. Several recent training runs have shown better loss per compute than AdamW. Gaining traction in research.</p>
+      </div>
+      <div class="card">
+        <h3>Adafactor</h3>
+        <p>Memory-efficient variant. Instead of storing a full second-moment matrix, it factorizes it into row and column statistics. Used by Google for T5 and some Gemini variants where memory is the constraint, not compute.</p>
+      </div>
+      <div class="card">
+        <h3>SOAP</h3>
+        <p>Shampoo with Adam in Projection Space. Uses approximate second-order curvature information (Kronecker-factored preconditioning). Better convergence per step, but more expensive to compute. Not yet mainstream.</p>
+      </div>
+      <div class="card">
+        <h3>Sophia</h3>
+        <p>Uses diagonal Hessian estimates (second-order information) to scale updates. More theoretically principled than Adam's variance estimate, but the Hessian computation adds overhead that makes it hard to justify in practice.</p>
+      </div>
+    </div>
+
+    <p style="margin-top:14px">AdamW is the safe default for most training runs. Muon is worth watching, but the tooling and practical guidance around it is still maturing. The optimizer you pick matters far less than data quality, model architecture, and learning rate schedule.</p>
+  </div>
+
+  <!-- TRAINING LOOP -->
+  <div class="section" id="training-loop">
+    <div class="section-label">Putting it together</div>
+    <h2>The training loop</h2>
+    <p>Everything above repeats in a loop, hundreds of thousands of times, across millions of text examples.</p>
+
+    <div class="loop-steps">
+      <div class="loop-step s1">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Grab a batch of text</h4>
+          <p>Pull ~512 tokens of text. Input = tokens 1–511. Target = tokens 2–512 (shifted by one). The model predicts each next token.</p>
+          <div class="example">Input: "The cat sat on the" → Target: "cat sat on the mat"</div>
+        </div>
+      </div>
+      <div class="loop-step s2">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Forward pass</h4>
+          <p>Run input through all 12 transformer blocks. Each token produces a probability distribution over 50,000 tokens.</p>
+          <div class="example">Model gives "mat" a 4% probability. It should be near 100%.</div>
+        </div>
+      </div>
+      <div class="loop-step s3">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Compute loss</h4>
+          <p>Cross-entropy compares predictions vs. correct next tokens. One number: how wrong was this batch?</p>
+          <div class="example">Loss = 3.22 early → 0.33 after training</div>
+        </div>
+      </div>
+      <div class="loop-step s4">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Backward pass</h4>
+          <p>PyTorch computes gradients for every weight automatically. Each weight now knows which direction reduces its error.</p>
+          <div class="example">"Weight #4,291,032 contributed 0.003 to the error. Nudge it down."</div>
+        </div>
+      </div>
+      <div class="loop-step s5">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>Update weights + repeat</h4>
+          <p>AdamW nudges every weight slightly. Zero gradients. Grab next batch. Repeat 100,000+ times.</p>
+          <div class="example">When loss stops falling, training is done. The weights ARE the model.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GLOSSARY -->
+  <div class="section" id="glossary">
+    <div class="section-label">Reference</div>
+    <h2>Glossary table</h2>
+
+    <table>
+      <thead>
+        <tr><th>Concept</th><th>What it is</th><th>Why it exists</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Token</td><td>A word or word-piece as an integer</td><td>Computers need numbers, not text</td></tr>
+        <tr><td>Embedding</td><td>A 768-number vector per token</td><td>Gives tokens a learnable position in "meaning space"</td></tr>
+        <tr><td>Attention</td><td>Each token asks: which others matter to me?</td><td>Lets the model understand context across the whole sequence</td></tr>
+        <tr><td>Flash Attention</td><td>Same math as attention, computed in GPU SRAM tiles</td><td>2–4× faster, less memory, same output</td></tr>
+        <tr><td><a href="#mlp" style="color:var(--accent-soft);text-decoration:none">MLP</a></td><td>Two linear layers with a GELU nonlinearity, applied per token after attention</td><td>Stores factual knowledge; adds non-linearity so the model can learn complex functions</td></tr>
+        <tr><td>Block</td><td>One attention + one MLP, stacked 12×</td><td>Deeper = richer representations at each layer</td></tr>
+        <tr><td>Logits</td><td>Raw scores for each of 50,000 tokens</td><td>The model's guess before turning into probabilities</td></tr>
+        <tr><td>Loss</td><td>How wrong the guess was (one number)</td><td>The signal that drives all learning</td></tr>
+        <tr><td>Gradient</td><td>Per-weight: which direction reduces loss?</td><td>The compass AdamW uses to nudge weights</td></tr>
+        <tr><td>AdamW</td><td>Optimizer that applies gradients with momentum</td><td>Smarter and faster than plain gradient descent</td></tr>
+        <tr><td>Training loop</td><td>Forward → loss → backward → update. Repeated.</td><td>How random weights become a useful model</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Q: WHAT IS A TRANSFORMER -->
+  <div class="section" id="q-what-is-transformer">
+    <div class="section-label">Q &amp; A</div>
+    <h2>What is a Transformer?</h2>
+    <p>The word "Transformer" refers to the overall architecture — the specific arrangement of components that makes modern language models work. It was introduced in the 2017 paper "Attention Is All You Need" and has been the dominant architecture for language models ever since.</p>
+    <p>The name comes from the fact that it <em>transforms</em> a sequence of tokens into a new sequence of context-aware representations — each token starts as an isolated vector and ends as a vector that has absorbed information from the entire context around it.</p>
+
+    <h3 style="margin-top:24px;color:var(--text);font-size:0.95rem">The three parts</h3>
+    <p>A transformer is made of three layers stacked in order:</p>
+
+    <!-- Architecture diagram -->
+    <div style="margin:20px 0;max-width:540px">
+
+      <!-- Input -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+        <div style="width:160px;text-align:right;font-size:0.78rem;color:var(--dim)">raw text</div>
+        <div style="flex:1;background:#1e293b;border-radius:6px;padding:8px 14px;font-size:0.8rem;color:#94a3b8;text-align:center">"The cat sat on the mat"</div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;padding-right:0;margin-left:172px;color:var(--dim);font-size:0.9rem;margin-bottom:4px">↓ tokenizer</div>
+
+      <!-- Token IDs -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+        <div style="width:160px;text-align:right;font-size:0.78rem;color:var(--dim)">token IDs</div>
+        <div style="flex:1;background:#1e293b;border-radius:6px;padding:8px 14px;font-size:0.8rem;color:#94a3b8;text-align:center;font-family:monospace">[464, 3797, 3332, 319, 262, 2603]</div>
+      </div>
+      <div style="margin-left:172px;color:var(--dim);font-size:0.9rem;margin-bottom:4px">↓ embedding lookup</div>
+
+      <!-- Embedding layer box -->
+      <div style="display:flex;align-items:stretch;gap:12px;margin-bottom:4px">
+        <div style="width:160px;text-align:right;font-size:0.78rem;color:var(--dim);padding-top:10px">1. Embedding layer</div>
+        <div style="flex:1;background:#854d0e;border-radius:6px;padding:12px 14px">
+          <div style="font-size:0.8rem;color:#fef3c7;font-weight:600;margin-bottom:4px">Token Embedding + Position Embedding</div>
+          <div style="font-size:0.75rem;color:#fde68a">Each token ID → a vector of 768 numbers<br>Position 0,1,2... → another vector of 768 numbers<br>Add them together → input to the blocks</div>
+        </div>
+      </div>
+      <div style="margin-left:172px;color:var(--dim);font-size:0.9rem;margin-bottom:4px">↓ repeated N times (e.g. 12)</div>
+
+      <!-- Transformer blocks -->
+      <div style="display:flex;align-items:stretch;gap:12px;margin-bottom:4px">
+        <div style="width:160px;text-align:right;font-size:0.78rem;color:var(--dim);padding-top:10px">2. Transformer blocks</div>
+        <div style="flex:1;border:1px solid #334155;border-radius:6px;overflow:hidden">
+          <div style="background:#1e3a5f;padding:10px 14px;border-bottom:1px solid #334155">
+            <div style="font-size:0.8rem;color:#93c5fd;font-weight:600">Block (× n_layer)</div>
+          </div>
+          <div style="background:#172554;padding:8px 14px;border-bottom:1px solid #1e3a5f;font-size:0.75rem;color:#93c5fd">
+            LayerNorm → CausalSelfAttention → residual add
+          </div>
+          <div style="background:#172554;padding:8px 14px;font-size:0.75rem;color:#93c5fd">
+            LayerNorm → MLP → residual add
+          </div>
+        </div>
+      </div>
+      <div style="margin-left:172px;color:var(--dim);font-size:0.9rem;margin-bottom:4px">↓</div>
+
+      <!-- Output head -->
+      <div style="display:flex;align-items:stretch;gap:12px;margin-bottom:4px">
+        <div style="width:160px;text-align:right;font-size:0.78rem;color:var(--dim);padding-top:10px">3. Output head</div>
+        <div style="flex:1;background:#166534;border-radius:6px;padding:12px 14px">
+          <div style="font-size:0.8rem;color:#bbf7d0;font-weight:600;margin-bottom:4px">LayerNorm + Linear (lm_head)</div>
+          <div style="font-size:0.75rem;color:#86efac">768 values per token → 50,257 scores<br>One score per word in the vocabulary<br>Highest score = predicted next token</div>
+        </div>
+      </div>
+      <div style="margin-left:172px;color:var(--dim);font-size:0.9rem;margin-bottom:4px">↓</div>
+
+      <!-- Output -->
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:160px;text-align:right;font-size:0.78rem;color:var(--dim)">output</div>
+        <div style="flex:1;background:#1e293b;border-radius:6px;padding:8px 14px;font-size:0.8rem;color:#94a3b8;text-align:center">logits [vocab_size] → next token prediction</div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:24px;color:var(--text);font-size:0.95rem">Why this arrangement works</h3>
+    <p>Before Transformers, sequence models (RNNs, LSTMs) processed tokens one at a time left-to-right. Token 500 could only see token 499 through a compressed "hidden state" — information from early tokens faded. Transformers process all tokens simultaneously and let every token look directly at every other token via attention. No fading, no bottleneck.</p>
+    <p>The repeated block structure means each block refines the representations slightly. Block 1 might learn basic grammar patterns, block 6 might learn entity relationships, block 12 might learn high-level reasoning. Stacking more blocks = more capacity, at the cost of more compute and memory.</p>
+
+    <h3 style="margin-top:24px;color:var(--text);font-size:0.95rem">What makes it a <em>language</em> model</h3>
+    <p>The architecture above is just a transformer. It becomes a language model by training it to predict the next token — given "The cat sat on the", predict "mat". Do this across billions of examples and the weights learn to encode grammar, facts, reasoning, and style. The architecture does not change — only the training objective and the data.</p>
+  </div>
+
+  <!-- Q1: BPE -->
+  <div class="section" id="q-bpe">
+    <div class="section-label">Q &amp; A</div>
+    <h2>What happens with a new word or name?</h2>
+    <p>Unfamiliar words get split into pieces. This is called <strong>Byte Pair Encoding (BPE)</strong>. The tokenizer was trained on a huge corpus and learned which letter-chunks appear together most often. Those chunks become vocabulary entries.</p>
+    <p>A name like <strong>"Reddy"</strong> that wasn't common enough to get its own token gets split into the closest pieces the vocabulary knows:</p>
+
+    <div class="token-row" style="align-items:center">
+      <div class="token" style="background:var(--surface);color:#f1f5f9;font-size:1rem">Reddy</div>
+      <div style="color:#475569;font-size:1.2rem">→</div>
+      <div class="token">Red<span class="id">Red</span></div>
+      <div class="token">dy<span class="id">dy</span></div>
+    </div>
+
+    <p style="margin-top:14px">The split depends on the vocabulary. It could also be <strong>R + eddy</strong> or <strong>Re + ddy</strong>. The tokenizer picks whatever uses the fewest tokens. Each piece gets its own embedding vector, and through attention the model recombines them to understand the full word in context.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:16px">
+      <div class="card">
+        <h3>Common word</h3>
+        <p>Gets its own token.<br><br><strong>"cat"</strong> → token #3797. One embedding.</p>
+      </div>
+      <div class="card">
+        <h3>Rare name</h3>
+        <p>Split into subwords.<br><br><strong>"Schwarzenegger"</strong> → ["Schwar","zen","egg","er"]. 4 tokens.</p>
+      </div>
+      <div class="card">
+        <h3>Truly unknown</h3>
+        <p>Falls back to characters or bytes.<br><br><strong>"🎯"</strong> → bytes of the emoji. Never fully unknown.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Q2: RAG -->
+  <div class="section" id="q-rag">
+    <div class="section-label">Practical Concepts</div>
+    <h2>RAG and embeddings</h2>
+    <p><strong>Embeddings are not standardized across models.</strong> But RAG sidesteps this entirely. Here's how.</p>
+    <p>First, there are <strong>two completely different things</strong> called "embeddings" that get mixed up:</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+      <div class="card" style="border-color:var(--accent)">
+        <h3 style="color:var(--accent-soft)">Internal token embeddings</h3>
+        <p>768-number vectors <em>inside</em> the model. Private to that model. Used during the forward pass. Never leave the model. Completely incompatible across models.</p>
+      </div>
+      <div class="card" style="border-color:var(--green)">
+        <h3 style="color:var(--green)">Retrieval embeddings (RAG)</h3>
+        <p>Vectors from a <em>separate</em> embedding model (like sentence-transformers). Used to search a document database. Totally separate from the LLM.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:24px;font-size:0.95rem;color:#f1f5f9">How RAG actually works</h3>
+
+    <div class="loop-steps" style="margin-top:12px">
+      <div class="loop-step s1">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Embed your documents (done once)</h4>
+          <p>Run every chunk through a dedicated embedding model. Each chunk becomes a vector stored in a vector database.</p>
+          <div class="example">"The Eiffel Tower is 330m tall." → [0.12, -0.44, 0.87, ...]</div>
+        </div>
+      </div>
+      <div class="loop-step s2">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Embed the user query (same model)</h4>
+          <p>Run the query through the <strong>exact same</strong> embedding model. Now query and documents are in the same vector space.</p>
+          <div class="example">"How tall is the Eiffel Tower?" → [0.11, -0.41, 0.85, ...]</div>
+        </div>
+      </div>
+      <div class="loop-step s3">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Find the closest documents</h4>
+          <p>Measure cosine similarity between query vector and all document vectors. Grab the top 3–5 closest.</p>
+          <div class="example">Query ↔ Eiffel Tower chunk = 0.94 similarity ✓</div>
+        </div>
+      </div>
+      <div class="loop-step s4">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Pass as plain text to the LLM</h4>
+          <p>Retrieved chunks convert back to text and paste into the prompt. The LLM reads them as normal tokens. No embedding magic needed.</p>
+          <div class="example">Prompt: "Context: [chunk]. Question: How tall? Answer:"</div>
+        </div>
+      </div>
+      <div class="loop-step s5">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>LLM generates the answer</h4>
+          <p>The LLM (any model) reads the context text and answers. It never touched the retrieval embeddings. The two models are fully decoupled.</p>
+          <div class="example">Output: "The Eiffel Tower is 330 metres tall."</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;border-color:var(--yellow)">
+      <h3 style="color:var(--yellow)">The one hard rule</h3>
+      <p>Use the <strong>same embedding model</strong> for both building the document database and encoding queries. If you mix models, the vectors are in different coordinate systems and similarity scores become meaningless. The generation LLM can be anything.</p>
+    </div>
+  </div>
+
+  <!-- Q3: STANDARDIZE -->
+  <div class="section" id="q-standardize">
+    <div class="section-label">Q &amp; A</div>
+    <h2>Why not standardize embeddings to cut overhead?</h2>
+    <p>Good instinct. But the overhead is much smaller than it looks, and standardizing the space turns out to be fundamentally hard.</p>
+
+    <h3 style="margin-top:20px;font-size:0.95rem;color:#f1f5f9">The overhead is actually tiny</h3>
+    <p>The embedding model in RAG is typically 22M–110M parameters. The LLM is 7B–70B+. Time breakdown of a real RAG call:</p>
+
+    <div class="latency-bars">
+      <div class="lat-row">
+        <span class="lat-label">Embed the query</span>
+        <div class="lat-track"><div class="lat-bar" style="background:var(--accent);width:2%"></div></div>
+        <span class="lat-val" style="color:var(--accent)">~10ms</span>
+      </div>
+      <div class="lat-row">
+        <span class="lat-label">Vector DB search</span>
+        <div class="lat-track"><div class="lat-bar" style="background:var(--accent);width:3%"></div></div>
+        <span class="lat-val" style="color:var(--accent)">~20ms</span>
+      </div>
+      <div class="lat-row">
+        <span class="lat-label">LLM generation</span>
+        <div class="lat-track"><div class="lat-bar" style="background:var(--pink);width:95%"></div></div>
+        <span class="lat-val" style="color:var(--pink)">~2000ms</span>
+      </div>
+    </div>
+
+    <p style="margin-top:12px">The embedding step is under 2% of total latency. The LLM generating tokens one-by-one is the real bottleneck.</p>
+
+    <h3 style="margin-top:24px;font-size:0.95rem;color:#f1f5f9">Why standardization is fundamentally hard</h3>
+    <p>The embedding space isn't a format you can agree on. It <em>emerges</em> from training, and two models trained differently end up with completely different coordinate systems even at identical dimensions.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+      <div class="card">
+        <h3>Dimensions vary</h3>
+        <p>Models use 384, 768, 1024, 1536, 3072 dims. You can't compare different-shaped vectors, and there's no obviously correct standard size.</p>
+      </div>
+      <div class="card">
+        <h3>Progress would freeze</h3>
+        <p>Agreeing on a standard today means a better model tomorrow breaks every vector database in the world. Standardizing locks in the current best.</p>
+      </div>
+      <div class="card">
+        <h3>Tasks need different spaces</h3>
+        <p>Code embeddings cluster by functionality. Medical by symptom. Legal by jurisdiction. One space can't be optimal for everything.</p>
+      </div>
+      <div class="card">
+        <h3>The space isn't designed</h3>
+        <p>You can standardize a file format because a human defined it. Embedding spaces emerge from training data, so you can't agree on one without training everyone identically.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:24px;font-size:0.95rem;color:#f1f5f9">What people actually do instead</h3>
+
+    <div class="loop-steps" style="margin-top:12px">
+      <div class="loop-step s1">
+        <div class="step-num" style="font-size:0.55rem;width:32px;height:32px">DE FACTO</div>
+        <div class="step-content">
+          <h4>Converge on popular APIs</h4>
+          <p>OpenAI's text-embedding-3-small and Cohere's embed-v3 have become informal standards through sheer adoption. Not official, but interoperable in practice.</p>
+        </div>
+      </div>
+      <div class="loop-step s2">
+        <div class="step-num" style="font-size:0.6rem;width:32px;height:32px">MRL</div>
+        <div class="step-content">
+          <h4>Matryoshka embeddings</h4>
+          <p>A training technique where a 1536-dim vector can be safely truncated to 768, 384, or 256 dims without losing much quality. Trade speed for accuracy at query time.</p>
+        </div>
+      </div>
+      <div class="loop-step s3">
+        <div class="step-num" style="font-size:0.6rem;width:32px;height:32px">CACHE</div>
+        <div class="step-content">
+          <h4>Cache query embeddings</h4>
+          <p>If users ask similar questions repeatedly, cache the embedding vector. The 10ms overhead disappears for repeated queries.</p>
+        </div>
+      </div>
+      <div class="loop-step s4">
+        <div class="step-num" style="font-size:0.6rem;width:32px;height:32px">ANN</div>
+        <div class="step-content">
+          <h4>Approximate nearest neighbour search</h4>
+          <p>Vector databases (FAISS, Pinecone, Weaviate) use index structures that find closest vectors in milliseconds across millions of documents without checking every one.</p>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top:14px">The real latency bottleneck in RAG is the LLM reading a long context and generating tokens autoregressively, not the embedding step. Techniques like speculative decoding and KV caching target that, not the embedding model.</p>
+  </div>
+
+  <!-- Q4: TRAINING COST -->
+  <div class="section" id="q-training-cost">
+    <div class="section-label">Practical Concepts</div>
+    <h2>Training cost and VRAM</h2>
+    <p>Not exponential, but it does compound in ways that feel that way. The costs come from a few different scaling relationships stacked on top of each other.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:20px;margin-bottom:10px">The FLOP accounting</h3>
+    <p>The standard estimate is that training a model costs roughly <strong>6 × N × D</strong> floating point operations, where N is parameter count and D is number of training tokens. So cost scales linearly with parameters and linearly with data. Double the model, double the cost. Double the data, double the cost.</p>
+    <p>The compounding comes from the Chinchilla result: to train a model optimally, you need roughly 20 tokens per parameter. So if you want to double your parameter count and keep training optimal, you also need to double your data. That makes cost scale roughly as N², which is quadratic, not exponential. Still painful, but not runaway.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:16px">
+      <div class="card">
+        <h3>Linear in parameters</h3>
+        <p>Each token touches every parameter once in the forward pass. 2× the parameters = 2× the compute per token.</p>
+      </div>
+      <div class="card">
+        <h3>Linear in data</h3>
+        <p>Each training token costs the same to process. 2× the tokens = 2× the total training cost.</p>
+      </div>
+      <div class="card">
+        <h3>Quadratic in sequence length</h3>
+        <p>The attention Q×K matrix grows as T². A 2048-token context costs 4× the attention compute of a 1024-token context. This is why Flash Attention matters.</p>
+      </div>
+    </div>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">Where it feels exponential</h3>
+    <p>Two things make the costs feel worse than the math suggests.</p>
+    <p>First, capability doesn't scale linearly with compute. You might need 10× the compute to get a model that scores 2× better on a benchmark. The returns are diminishing, so you end up spending exponentially more to get linear capability gains.</p>
+    <p>Second, infrastructure costs are non-linear. At small scale you rent cloud GPUs. At medium scale you need dedicated clusters with high-speed interconnects. At large scale you're building your own datacenters. Each tier is a step change in cost per FLOP, not a smooth curve.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">Worked examples: GPT-2, GPT-3, and your 75M model</h3>
+    <p>Plugging real numbers into 6 × N × D:</p>
+
+    <div style="background:#0b0e15;border:1px solid #334155;border-radius:8px;padding:18px;margin-top:12px;font-size:0.82rem;overflow-x:auto">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:0;min-width:560px">
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">Model</div>
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">N (params)</div>
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">D (tokens)</div>
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">6 × N × D</div>
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">Single H100 (80GB)</div>
+
+        <div style="color:var(--text);padding:8px 10px;border-bottom:1px solid #0f172a">GPT-2 XL</div>
+        <div style="color:var(--accent-soft);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">1.5B</div>
+        <div style="color:var(--accent-soft);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">10B</div>
+        <div style="color:var(--accent-soft);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">9 × 10¹⁹</div>
+        <div style="color:var(--muted);padding:8px 10px;border-bottom:1px solid #0f172a">~25 hrs</div>
+
+        <div style="color:var(--text);padding:8px 10px;border-bottom:1px solid #0f172a">GPT-3</div>
+        <div style="color:var(--accent-soft);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">175B</div>
+        <div style="color:var(--accent-soft);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">300B</div>
+        <div style="color:var(--accent-soft);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">3.15 × 10²³</div>
+        <div style="color:#f87171;padding:8px 10px;border-bottom:1px solid #0f172a">~10 years</div>
+
+        <div style="color:var(--green);padding:8px 10px">Your 75M model</div>
+        <div style="color:var(--green);padding:8px 10px;font-family:monospace">75M</div>
+        <div style="color:var(--green);padding:8px 10px;font-family:monospace">1B</div>
+        <div style="color:var(--green);padding:8px 10px;font-family:monospace">4.5 × 10¹⁷</div>
+        <div style="color:var(--green);padding:8px 10px">~2 hrs (5070 Ti: 6–8 hrs)</div>
+      </div>
+    </div>
+
+    <p style="margin-top:14px">H100 SXM peaks at ~989 TFLOPS BF16. Real training efficiency is 40–50% of peak due to memory transfers, data loading, and communication overhead between GPUs, so effective throughput is roughly 400–500 TFLOPS. The 5070 Ti is about 3–4× slower than an H100 for this kind of workload, which is why the same 75M run takes 6–8 hours instead of 2.</p>
+
+    <p>GPT-3's 10-year single-H100 figure is why it took OpenAI roughly 10,000 A100s for about a month — costing an estimated $5–12M in cloud compute at the time. No single GPU can hold a 175B model in VRAM anyway, which brings us to the next table.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">VRAM needed to load and run these models</h3>
+    <p>Training VRAM and inference VRAM are different problems. To just load a model and run it, you need roughly <strong>2 bytes per parameter</strong> in BF16, or <strong>0.5 bytes per parameter</strong> in 4-bit quantization. Training needs significantly more on top of that for gradients and optimizer states.</p>
+
+    <div style="background:#0b0e15;border:1px solid #334155;border-radius:8px;padding:18px;margin-top:12px;font-size:0.82rem;overflow-x:auto">
+      <div style="display:grid;grid-template-columns:1.4fr 0.8fr 0.9fr 0.9fr 1.4fr;gap:0;min-width:600px">
+
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">Model</div>
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">Params</div>
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">BF16 VRAM</div>
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">4-bit VRAM</div>
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">Fits on...</div>
+
+        <div style="color:var(--green);padding:8px 10px;border-bottom:1px solid #0f172a">Your 75M model</div>
+        <div style="color:var(--green);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">75M</div>
+        <div style="color:var(--green);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">150 MB</div>
+        <div style="color:var(--green);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">40 MB</div>
+        <div style="color:var(--green);padding:8px 10px;border-bottom:1px solid #0f172a">Literally any GPU, including iGPUs</div>
+
+        <div style="color:var(--text);padding:8px 10px;border-bottom:1px solid #0f172a">Qwen 27B (dense)</div>
+        <div style="color:var(--accent-soft);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">27B</div>
+        <div style="color:#f87171;padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">54 GB</div>
+        <div style="color:var(--muted);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">~14 GB</div>
+        <div style="color:var(--muted);padding:8px 10px;border-bottom:1px solid #0f172a">BF16: single H100 80GB (tight, ~6GB headroom). 4-bit: fits on 5070 Ti 16GB</div>
+
+        <div style="color:var(--text);padding:8px 10px;border-bottom:1px solid #0f172a">Qwen 35B MoE</div>
+        <div style="color:var(--accent-soft);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">35B total<br><span style="color:var(--dim);font-size:0.72rem">~7B active/token</span></div>
+        <div style="color:#f87171;padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">70 GB</div>
+        <div style="color:var(--muted);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">~18 GB</div>
+        <div style="color:var(--muted);padding:8px 10px;border-bottom:1px solid #0f172a">BF16: H100 80GB (very tight, barely fits). 4-bit: just over 16GB, needs ~2GB CPU offload on 5070 Ti — which is how the roadmap runs it via llama.cpp</div>
+
+        <div style="color:var(--text);padding:8px 10px">Llama 3.1 405B (SOTA open)</div>
+        <div style="color:var(--accent-soft);padding:8px 10px;font-family:monospace">405B</div>
+        <div style="color:#f87171;padding:8px 10px;font-family:monospace">810 GB</div>
+        <div style="color:#f87171;padding:8px 10px;font-family:monospace">~200 GB</div>
+        <div style="color:#f87171;padding:8px 10px">BF16: 11× H100 80GB minimum. 4-bit: 3× H100 80GB. Single-GPU inference is physically impossible at BF16</div>
+
+      </div>
+    </div>
+
+    <p style="margin-top:14px">MoE models (like Qwen 35B MoE) have an important distinction: <strong>all parameters must be loaded into VRAM</strong> even though only a fraction are active for any given token. The "35B total / ~7B active" means every forward pass costs compute equivalent to a 7B dense model, but you still pay the full 35B VRAM cost to store all the expert weights.</p>
+
+    <p>This is the trade-off that makes MoE attractive: you get a large model's knowledge at a smaller model's inference cost, but you need the VRAM to load all the experts upfront.</p>
+
+    <div style="background:#0b0e15;border:1px solid #334155;border-radius:8px;padding:14px 16px;margin-top:14px;font-size:0.82rem">
+      <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Training VRAM is a different calculation</div>
+      <p style="color:var(--muted);margin:0">During training you also need: gradients (~2 bytes/param), Adam optimizer states (~8 bytes/param for first + second moment in FP32), and activations (varies with batch size). Total comes to roughly <strong>16–20 bytes per parameter</strong> for a full training run. Your 75M model needs roughly 1.2–1.5GB for training — trivial. A 27B model needs ~430–540GB for full training, which is why almost nobody trains 27B+ models from scratch without model parallelism across many GPUs.</p>
+    </div>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">Small model on a consumer GPU</h3>
+    <p>At 75M to 300M parameters on a single consumer GPU (e.g. RTX 4090 or 5070 Ti), costs scale predictably. A 4× bigger model costs roughly 4× more to train, and you need 4× the data to keep training optimal. The quadratic attention cost only becomes a real problem at long context lengths.</p>
+  </div>
+
+  <!-- Q: CONTEXT SIZE -->
+  <div class="section" id="q-context">
+    <div class="section-label">Practical Concepts</div>
+    <h2>Context size and the KV cache</h2>
+    <p>Context size is how many tokens the model can see at once. There are three separate things that determine and constrain it, and most explanations mix them up.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:20px;margin-bottom:10px">1. The training context limit</h3>
+    <p>During training, every batch has a fixed sequence length. The model learns positional embeddings only up to that length. If a model was trained with a max sequence length of 8192 tokens, it has never seen position index 8193 during training — its positional encoding for that slot is undefined, in the same way a lookup table has no entry for a key that was never inserted.</p>
+    <p>Modern models use <strong>RoPE (Rotary Position Embedding)</strong> rather than learned absolute positions. RoPE encodes position as a rotation in the embedding space, which means it can mathematically extrapolate beyond its training length — the formula still produces a number. The problem is the model was not trained to handle those rotation angles, so output quality degrades past the training limit. How much it degrades depends on the model and how far you push it.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">2. The KV cache: why context takes VRAM</h3>
+    <p>This is the part beginners consistently miss. During inference, the model generates tokens one at a time. To generate token N, it needs to run attention over all N-1 previous tokens. Rather than recomputing keys and values for every previous token on each new step (which would be quadratic in time), the model caches them. This is the <strong>KV cache</strong>.</p>
+
+    <p style="margin-top:10px">KV cache size formula:</p>
+    <div style="background:#0b0e15;border:1px solid #334155;border-radius:8px;padding:14px 16px;margin-top:8px;font-family:monospace;font-size:0.82rem;color:#c7d2fe">
+      KV cache = 2 × n_layers × n_kv_heads × head_dim × context_length × bytes_per_element
+    </div>
+
+    <p style="margin-top:14px">The 2 is for K and V separately. It grows <strong>linearly with context length</strong>. Worked example for Llama 3 8B (which uses GQA — explained below):</p>
+
+    <div style="background:#0b0e15;border:1px solid #334155;border-radius:8px;padding:18px;margin-top:10px;font-size:0.82rem;overflow-x:auto">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;min-width:480px">
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">Context length</div>
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">KV cache (FP16)</div>
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">Model weights (Q4)</div>
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">Total VRAM needed</div>
+
+        <div style="color:var(--text);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">4K tokens</div>
+        <div style="color:var(--green);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">512 MB</div>
+        <div style="color:var(--accent-soft);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">4 GB</div>
+        <div style="color:var(--muted);padding:8px 10px;border-bottom:1px solid #0f172a">~4.5 GB — easy</div>
+
+        <div style="color:var(--text);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">32K tokens</div>
+        <div style="color:var(--yellow);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">4 GB</div>
+        <div style="color:var(--accent-soft);padding:8px 10px;border-bottom:1px solid #0f172a;font-family:monospace">4 GB</div>
+        <div style="color:var(--muted);padding:8px 10px;border-bottom:1px solid #0f172a">~8 GB — KV cache now equals the weights</div>
+
+        <div style="color:var(--text);padding:8px 10px;font-family:monospace">128K tokens</div>
+        <div style="color:#f87171;padding:8px 10px;font-family:monospace">16 GB</div>
+        <div style="color:var(--accent-soft);padding:8px 10px;font-family:monospace">4 GB</div>
+        <div style="color:#f87171;padding:8px 10px">~20 GB — KV cache is 4× the model</div>
+      </div>
+    </div>
+
+    <p style="margin-top:14px">The table above assumes the worst case: FP16 KV cache stored entirely in VRAM, on a dense model with relatively many KV heads. Real inference engines close the gap significantly with three techniques:</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px">
+      <div class="card">
+        <h3>KV cache quantization</h3>
+        <p>llama.cpp can quantize the KV cache itself to Q8 or Q4. Q8 halves the cache size vs FP16. Q4 quarters it. This is what options like "turbo quant" enable — the 128K example above shrinks from 16GB to ~4GB at Q4 KV.</p>
+      </div>
+      <div class="card">
+        <h3>CPU RAM offloading</h3>
+        <p>When VRAM fills, llama.cpp spills the KV cache into system RAM silently. Slower per token but functional. A 16GB GPU paired with 64GB of system RAM can handle very long contexts this way.</p>
+      </div>
+      <div class="card">
+        <h3>MoE architecture</h3>
+        <p>MoE models often have fewer KV heads per parameter count than dense models, since the expert layers provide capacity that doesn't go through attention. A 35B MoE can have a smaller KV cache footprint than a 13B dense model.</p>
+      </div>
+    </div>
+
+    <p style="margin-top:14px">The core point still holds: KV cache is the hidden VRAM cost that grows with context and catches people off guard. The specific numbers depend heavily on model architecture, KV quantization level, and how much of the cache gets offloaded to RAM.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">3. Why llama.cpp lets you increase it beyond the training limit</h3>
+    <p>llama.cpp exposes a parameter called <code style="background:var(--surface);padding:2px 6px;border-radius:4px;color:var(--accent-soft)">--rope-freq-base</code> (or equivalently <code style="background:var(--surface);padding:2px 6px;border-radius:4px;color:var(--accent-soft)">--ctx-size</code> with automatic scaling). Increasing this stretches the RoPE rotation angles so the model's positional encoding covers a longer range without completely collapsing outside its training distribution.</p>
+    <p>Techniques like <strong>YaRN</strong> and <strong>LongRoPE</strong> do this more carefully — they interpolate the position angles rather than extrapolating, which causes less quality degradation. Some models are specifically fine-tuned with these techniques to genuinely extend their context (Llama 3.1's 128K context was achieved this way from a shorter base).</p>
+    <p>The practical result: you can push most models 2–4× beyond their training context with modest quality loss on the extended portion. Beyond that the model starts losing coherence at the edges of the window because the positional signal is too far outside what it trained on.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">GQA: the fix modern models use to shrink the KV cache</h3>
+    <p>Older models (GPT-2, Llama 1) used one set of K and V heads per attention head. If you have 32 heads, you cache 32 sets of K and V. <strong>Grouped Query Attention (GQA)</strong> shares K and V across groups of query heads — Llama 3 8B uses 8 KV heads instead of 32, making the KV cache 4× smaller for the same model size and context length. The quality impact is minimal because query heads in the same group tend to attend to similar positions anyway.</p>
+    <p>This is why Llama 3 can run 128K context on a single GPU where Llama 2 at the same size could not — the architecture change reduced KV cache pressure by 4× before any other optimization.</p>
+
+    <div style="background:#0b0e15;border:1px solid #334155;border-radius:8px;padding:14px 16px;margin-top:14px;font-size:0.82rem;color:var(--muted)">
+      <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Rule of thumb for VRAM planning</div>
+      When loading a model, budget: <span style="color:var(--text)">model weights + (context_length × ~0.125–0.5 MB per token depending on model size and KV head count)</span>. For a 7B model at 32K context, the KV cache alone is typically 4–8 GB on top of the weights. If you are running out of VRAM mid-conversation, reduce context size first before reducing model size.
+    </div>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:28px;margin-bottom:10px">TurboQuant: pushing KV cache compression further</h3>
+    <p>Standard KV cache quantization (Q8, Q4) rounds values to fewer bits but still needs to store quantization constants in full precision alongside the compressed data. Those constants add 1–2 extra bits per value and erode the compression benefit. TurboQuant is a Google Research paper (March 2026, Zandieh and Mirrokni) that eliminates this overhead with two techniques stacked together.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+      <div class="card" style="border-color:var(--accent)">
+        <h3 style="color:var(--accent-soft)">PolarQuant</h3>
+        <p>Converts vectors from Cartesian coordinates to polar coordinates before quantizing. Standard quantization maps onto variable square grids, which requires storing normalization constants. Polar coordinates map onto a predictable circular grid, making those normalization constants unnecessary. Zero overhead for the grid constants.</p>
+      </div>
+      <div class="card" style="border-color:var(--accent)">
+        <h3 style="color:var(--accent-soft)">QJL (Quantized Johnson-Lindenstrauss)</h3>
+        <p>Reduces each vector component down to a single sign bit: +1 or -1. One bit per component, zero memory overhead for constants. A specialized estimator then reconstructs the attention scores from those sign bits with enough accuracy that quality is preserved. The math comes from Johnson-Lindenstrauss random projections, which guarantee that dot products between vectors are approximately preserved even after this extreme reduction.</p>
+      </div>
+    </div>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">Results</h3>
+    <div style="background:#0b0e15;border:1px solid #334155;border-radius:8px;padding:18px;margin-top:10px;font-size:0.82rem;overflow-x:auto">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;min-width:360px">
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">Metric</div>
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">Result</div>
+
+        <div style="color:var(--text);padding:8px 10px;border-bottom:1px solid #0f172a">KV cache memory reduction</div>
+        <div style="color:var(--green);padding:8px 10px;border-bottom:1px solid #0f172a;font-weight:600">6× vs FP16 baseline</div>
+
+        <div style="color:var(--text);padding:8px 10px;border-bottom:1px solid #0f172a">Effective bits per value</div>
+        <div style="color:var(--green);padding:8px 10px;border-bottom:1px solid #0f172a">3-bit, no fine-tuning required</div>
+
+        <div style="color:var(--text);padding:8px 10px;border-bottom:1px solid #0f172a">Throughput on H100</div>
+        <div style="color:var(--green);padding:8px 10px;border-bottom:1px solid #0f172a">Up to 8× faster than FP16 KV</div>
+
+        <div style="color:var(--text);padding:8px 10px">Accuracy</div>
+        <div style="color:var(--green);padding:8px 10px">No measurable loss on LongBench, RULER, ZeroSCROLLS</div>
+      </div>
+    </div>
+
+    <p style="margin-top:14px">The 8× throughput improvement on H100 comes from the KV cache no longer being the memory bandwidth bottleneck. Standard long-context inference spends most of its time reading the KV cache from HBM on every attention step. At 3 bits per value, far more of the cache fits in fast on-chip SRAM, which is where Flash Attention was already trying to keep things. TurboQuant and Flash Attention are addressing the same bottleneck from different angles.</p>
+
+    <p>This is why running Qwen 35B MoE at 120K context on a 16GB card is possible in practice despite the theoretical numbers looking too large. The KV cache in modern inference engines is aggressively compressed, and TurboQuant represents the current research frontier for how far that compression can go without losing quality.</p>
+  </div>
+
+  <!-- Q: Q4 BIG VS SMALL FULL PRECISION -->
+  <div class="section" id="q-quant-vs-small">
+    <div class="section-label">Q &amp; A</div>
+    <h2>Q4 quantized large model vs smaller full-precision model: which is better?</h2>
+    <p>Assuming both are recent, trained on similar data, and both fit in VRAM: <strong>the Q4 large model wins almost every time.</strong></p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:20px;margin-bottom:10px">Why quantization loses less than you'd expect</h3>
+    <p>Modern Q4 quantization (methods like GPTQ, AWQ, or GGUF Q4_K_M) rounds each weight from 16 bits down to 4 bits. That sounds like throwing away 75% of the information, but in practice the capability loss is small — typically 2–5% degradation on benchmarks — because the weights in a trained model are not uniformly distributed. Most weights cluster near zero and the quantization methods are designed to preserve the outliers that actually matter.</p>
+    <p>Halving the parameter count, on the other hand, loses substantially more. The model has fewer parameters to store knowledge in, shallower reasoning capacity, and weaker representations learned during training. That structural deficit cannot be recovered by using higher precision arithmetic on what remains.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+      <div class="card" style="border-color:var(--green)">
+        <h3 style="color:var(--green)">Q4 large model</h3>
+        <p>Loses ~2–5% capability from quantization. Keeps all the knowledge, reasoning depth, and representations learned from scale. A Q4 70B model consistently outperforms a FP16 13B model across almost all benchmarks.</p>
+      </div>
+      <div class="card">
+        <h3>Full-precision small model</h3>
+        <p>Perfect numerical precision on a weaker foundation. The extra bits are being used to represent weights that already encode less knowledge. Precision cannot compensate for missing capacity.</p>
+      </div>
+    </div>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">Concrete benchmark pattern</h3>
+    <p>This holds consistently across model families. On standard evals like MMLU, HumanEval, and HellaSwag:</p>
+
+    <div style="background:#0b0e15;border:1px solid #334155;border-radius:8px;padding:18px;margin-top:12px;font-size:0.82rem;overflow-x:auto">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;min-width:400px">
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">Comparison</div>
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">Winner</div>
+        <div style="color:var(--dim);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:6px 10px;border-bottom:1px solid #1e293b">Margin</div>
+
+        <div style="color:var(--text);padding:8px 10px;border-bottom:1px solid #0f172a">Q4 27B vs FP16 7B</div>
+        <div style="color:var(--green);padding:8px 10px;border-bottom:1px solid #0f172a">Q4 27B</div>
+        <div style="color:var(--muted);padding:8px 10px;border-bottom:1px solid #0f172a">Large, clear</div>
+
+        <div style="color:var(--text);padding:8px 10px;border-bottom:1px solid #0f172a">Q4 70B vs FP16 13B</div>
+        <div style="color:var(--green);padding:8px 10px;border-bottom:1px solid #0f172a">Q4 70B</div>
+        <div style="color:var(--muted);padding:8px 10px;border-bottom:1px solid #0f172a">Large, clear</div>
+
+        <div style="color:var(--text);padding:8px 10px;border-bottom:1px solid #0f172a">Q4 405B vs FP16 70B</div>
+        <div style="color:var(--green);padding:8px 10px;border-bottom:1px solid #0f172a">Q4 405B</div>
+        <div style="color:var(--muted);padding:8px 10px;border-bottom:1px solid #0f172a">Most tasks</div>
+
+        <div style="color:var(--text);padding:8px 10px">Q2 large vs FP16 small</div>
+        <div style="color:var(--yellow);padding:8px 10px">Depends</div>
+        <div style="color:var(--muted);padding:8px 10px">Q2 errors are large enough to close the gap</div>
+      </div>
+    </div>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">The one case where the smaller model wins</h3>
+    <p>Speed. More parameters means more compute per token. For the same batch size, the larger model produces tokens slower. If your application needs sub-100ms latency or you are running high-throughput inference where tokens/second matters more than raw quality, the smaller full-precision model can be the right trade-off. For most local use cases where you are waiting seconds per response anyway, this does not matter.</p>
+
+    <p style="margin-top:12px">The other edge case is very aggressive quantization: Q2 and Q3 have large enough numerical errors that a smaller model in FP16 can sometimes compete depending on the task. Q4 is generally considered the safe floor where quality is well-preserved.</p>
+  </div>
+
+  <!-- Q5: DATA GATHERING -->
+  <div class="section" id="q-data">
+    <div class="section-label">Practical Concepts</div>
+    <h2>Data gathering and cleaning</h2>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:4px;margin-bottom:10px">Where data comes from</h3>
+    <p>For general language models there are a handful of standard sources. You do not scrape the web yourself at this scale.</p>
+
+    <div class="loop-steps" style="margin-top:12px">
+      <div class="loop-step s1">
+        <div class="step-num" style="font-size:0.55rem;width:32px;height:32px">WEB</div>
+        <div class="step-content">
+          <h4>Common Crawl</h4>
+          <p>The largest freely available web scrape. Petabytes of raw text from billions of pages. Very dirty. Almost always used as the base, then heavily filtered. Most big models start here.</p>
+        </div>
+      </div>
+      <div class="loop-step s2">
+        <div class="step-num" style="font-size:0.55rem;width:32px;height:32px">FILT</div>
+        <div class="step-content">
+          <h4>FineWeb / FineWeb-Edu</h4>
+          <p>HuggingFace's filtered version of Common Crawl. FineWeb-Edu specifically filters for educational content using a classifier. Strong out-of-the-box quality. Good starting point for a first training run.</p>
+        </div>
+      </div>
+      <div class="loop-step s3">
+        <div class="step-num" style="font-size:0.55rem;width:32px;height:32px">CURB</div>
+        <div class="step-content">
+          <h4>The Pile / RedPajama</h4>
+          <p>Curated mixtures of web text, books, Wikipedia, academic papers, GitHub code. EleutherAI's Pile was widely used before FineWeb. RedPajama is an open reproduction of LLaMA's training mix.</p>
+        </div>
+      </div>
+      <div class="loop-step s4">
+        <div class="step-num" style="font-size:0.55rem;width:32px;height:32px">HIGH</div>
+        <div class="step-content">
+          <h4>Wikipedia, books, arXiv</h4>
+          <p>High-quality, low-volume. Dense information per token. Usually mixed in at a higher ratio than their raw size would suggest. Wikipedia alone is only ~20GB of text but punches above its weight in quality.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">What cleaning actually involves</h3>
+    <p>The level of cleaning needed depends on the source. Raw Common Crawl needs aggressive cleaning. Pre-filtered datasets like FineWeb need much less.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+      <div class="card" style="border-color:var(--green)">
+        <h3 style="color:var(--green)">Always worth doing</h3>
+        <p><strong>Deduplication</strong> is the most important step. Duplicate text causes memorization, wastes training compute on redundant data, and can inflate benchmark scores. MinHash LSH is the standard approach at scale.</p>
+      </div>
+      <div class="card" style="border-color:var(--green)">
+        <h3 style="color:var(--green)">Worth doing</h3>
+        <p><strong>Language filtering</strong> with fastText. If you are training an English model, non-English text adds noise. Simple and fast to filter.</p>
+      </div>
+      <div class="card">
+        <h3>Situational</h3>
+        <p><strong>Quality filtering</strong> via heuristics: document length, ratio of symbols to words, ratio of repeated lines. Aggressive filtering can hurt if it removes valid but short documents.</p>
+      </div>
+      <div class="card">
+        <h3>Usually skip for research</h3>
+        <p><strong>PII removal</strong> (names, emails, phone numbers) matters for production models you deploy. For a research training run that stays local, the complexity is rarely worth it.</p>
+      </div>
+    </div>
+
+    <p style="margin-top:14px">The counterintuitive finding from several papers: a small amount of high-quality data mixed with larger amounts of decent data often beats large amounts of heavily filtered data alone. LLaMA-1 used less filtered data than expected and still worked well. The data mixture matters as much as cleaning.</p>
+
+    <div class="card" style="margin-top:14px;border-color:var(--accent)">
+      <h3 style="color:var(--accent-soft)">For this project specifically</h3>
+      <p>Use FineWeb-Edu as your base. It is already deduplicated and quality-filtered. Add Wikipedia and a small slice of books if you want. That gets you a usable pretraining dataset without building a cleaning pipeline from scratch, which is a project in itself.</p>
+    </div>
+  </div>
+
+  <!-- Q6: FINETUNE VS TRAIN -->
+  <div class="section" id="q-finetune-vs-train">
+    <div class="section-label">Practical Concepts</div>
+    <h2>Finetuning vs training from scratch</h2>
+    <p>For most practical use cases, yes. For learning what you are trying to learn here, no. The reason differs depending on what you are optimizing for.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:20px;margin-bottom:10px">Why finetuning wins in industry</h3>
+    <p>A base model like LLaMA 3 8B has already seen roughly 15 trillion tokens. Your 75M model trained on 1B tokens will not beat it on any benchmark. The knowledge, reasoning, and language understanding in LLaMA 3 took tens of thousands of GPU-hours to build. You get that for free when you finetune.</p>
+    <p>Finetuning teaches the model new behavior on top of existing knowledge. Training from scratch makes it build all knowledge from scratch. For most tasks (instruction following, domain adaptation, style, classification), the behavior change is all you need.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+      <div class="card">
+        <h3>Finetuning a 7B base model</h3>
+        <p>Costs a few hours on your GPU. Starts with a model that already reads and reasons well. You direct it toward your task. Beats a from-scratch 75M model on virtually every downstream benchmark.</p>
+      </div>
+      <div class="card">
+        <h3>Training 75M from scratch</h3>
+        <p>Costs 6-8 hours on your GPU for 1B tokens. Gives you a model that produces coherent text but has shallow knowledge. Necessary for learning the pipeline, not for building something useful.</p>
+      </div>
+    </div>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">The middle option: continual pretraining</h3>
+    <p>Take an existing base model and keep pretraining it on your domain data before finetuning. Used when your domain is genuinely out-of-distribution from the base model's training data (e.g., a specific programming language, a clinical subdomain, a non-English language with limited web presence). The base model keeps its general capabilities while absorbing your domain knowledge more deeply than finetuning alone can achieve.</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">Why training from scratch still makes sense here</h3>
+    <p>Training from scratch is not about producing the most capable model — it is about understanding how these systems work. Finetuning hides the whole stack below the surface. Training from scratch means you have written or understood every component: the architecture, the data pipeline, the training loop, the loss curve, the scaling behavior. That knowledge transfers to every model you work with afterwards, including the ones you finetune.</p>
+
+    <div class="card" style="margin-top:14px;border-color:var(--yellow)">
+      <h3 style="color:var(--yellow)">The practical split</h3>
+      <p>In industry: almost nobody trains from scratch except frontier labs (OpenAI, Google, Meta, Anthropic, Mistral). Everyone else finetunes. In research: you train from scratch when you want to study the training process itself, scaling laws, or architecture decisions. This project falls squarely in the second category.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ATTENTION CODE WALKTHROUGH -->
+  <div class="section" id="attention-code">
+    <div class="section-label">Deep Dive &nbsp;·&nbsp; Optional</div>
+    <h2>Reading CausalSelfAttention</h2>
+    <p>The full class from nanoGPT. Each chunk has a visual showing what's actually happening to the data.</p>
+
+    <style>
+      .cw-box { background: var(--surface); border-radius: 8px; padding: 16px 20px; margin-top: 12px; font-family: monospace; font-size: 0.82rem; line-height: 1.8; overflow-x: auto; color: #94a3b8; white-space: pre; }
+      .cw-visual { margin: 16px 0 8px; }
+      .cw-label { font-size: 0.72rem; color: var(--dim); margin-bottom: 6px; }
+      .tok-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+      .tok { background: #1e3a5f; color: #93c5fd; border-radius: 5px; padding: 5px 10px; font-size: 0.8rem; font-weight: 600; }
+      .vec-bar { height: 28px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 600; color: #fff; }
+      .vec-full  { background: #1e40af; width: 180px; }
+      .vec-triple { background: #1d4ed8; width: 540px; max-width: 100%; }
+      .vec-q { background: #166534; width: 180px; }
+      .vec-k { background: #854d0e; width: 180px; }
+      .vec-v { background: #7e22ce; width: 180px; }
+      .vec-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+      .arrow-down { text-align: center; color: var(--dim); font-size: 1.1rem; margin: 6px 0; }
+      .head-grid { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+      .head-cell { width: 38px; height: 28px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 600; color: #fff; }
+      .head-q { background: #166534; }
+      .head-k { background: #854d0e; }
+      .head-v { background: #7e22ce; }
+      .mask-grid { display: inline-grid; grid-template-columns: repeat(5, 36px); gap: 3px; margin-top: 6px; }
+      .mask-cell { width: 36px; height: 36px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 600; }
+      .mask-on  { background: #1e3a5f; color: #93c5fd; }
+      .mask-off { background: #1e1e2e; color: #334155; }
+      .mask-hdr { background: transparent; color: var(--dim); font-size: 0.68rem; }
+      .score-grid { display: inline-grid; grid-template-columns: repeat(5, 44px); gap: 3px; margin-top: 6px; }
+      .score-cell { width: 44px; height: 36px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600; }
+      .score-hdr { background: transparent; color: var(--dim); font-size: 0.68rem; }
+      .score-val { background: #1e3a5f; color: #93c5fd; }
+      .score-zero { background: #1e1e2e; color: #334155; }
+      .score-hi  { background: #1d4ed8; color: #bfdbfe; }
+      .flow-step { display: flex; align-items: flex-start; gap: 16px; margin-top: 16px; }
+      .flow-num  { background: var(--accent); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+      .flow-body { flex: 1; }
+      .flow-body p { margin: 0; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; }
+      .code-tip { color: #7dd3fc; border-bottom: 1px dotted #7dd3fc; cursor: help; }
+    </style>
+
+    <!-- ── CHUNK 1: c_attn setup ── -->
+    <h3 style="margin-top:28px;color:var(--text);font-size:1rem">1. Setting up the layers</h3>
+    <div class="cw-box">class CausalSelfAttention(nn.Module):
+
+    def __init__(self, <span class="code-tip" data-tip="The settings object you create before training. e.g. GPTConfig(n_embd=768, n_head=12). Nothing in it is learned — you set these numbers yourself.">config</span>):
+        <span class="code-tip" data-tip="Runs the parent class (nn.Module) setup code first. Required in every PyTorch class — skipping it breaks parameter tracking, GPU moves, and saving/loading weights.">super().__init__()</span>
+        <span class="code-tip" data-tip="Python keyword. If the condition is false, Python crashes immediately with an error. Used here as an early sanity check so you get a clear message instead of a confusing shape error later.">assert</span> <span class="code-tip" data-tip="n_embd: embedding size. How many numbers represent each token. GPT-2 uses 768. You pick this before training starts.">config.n_embd</span> % <span class="code-tip" data-tip="n_head: number of attention heads running in parallel. GPT-2 uses 12. Each head gets an equal slice of n_embd.">config.n_head</span> == 0
+        self.<span class="code-tip" data-tip="One linear layer (matrix multiply) that produces Q, K, and V all at once. Output is 3x n_embd so it can be split into thirds.">c_attn</span> = <span class="code-tip" data-tip="A learnable matrix multiply: output = input x weights + bias. Weights start random and are updated every training step. nn.Linear(A, B) means input size A, output size B.">nn.Linear</span>(<span class="code-tip" data-tip="Input size: each token arrives as a vector of n_embd numbers (e.g. 768).">config.n_embd</span>, 3 * config.n_embd, bias=<span class="code-tip" data-tip="True = include a bias term (+b) in the multiply. nn.Linear creates and trains this automatically alongside the weights.">config.bias</span>)
+        self.<span class="code-tip" data-tip="Final linear layer. Runs at the very end after all heads are combined. Mixes the result back into one n_embd-sized vector per token.">c_proj</span> = <span class="code-tip" data-tip="A learnable matrix multiply: output = input x weights + bias. Weights start random and are updated every training step.">nn.Linear</span>(config.n_embd, config.n_embd, bias=config.bias)
+        self.<span class="code-tip" data-tip="Randomly zeros out some attention scores during training. Stops the model from over-relying on specific token pairs.">attn_dropout</span>  = <span class="code-tip" data-tip="Randomly sets a fraction of values to zero during training. config.dropout=0.1 means 10% zeroed each step. Automatically disabled at inference — you never call .eval() manually, PyTorch handles it.">nn.Dropout</span>(<span class="code-tip" data-tip="A number like 0.1 — means 10% of values are randomly zeroed each training step. Set to 0 at inference time.">config.dropout</span>)
+        self.<span class="code-tip" data-tip="Same idea as attn_dropout but applied to the output vector after c_proj, before returning to the block.">resid_dropout</span> = <span class="code-tip" data-tip="Randomly sets a fraction of values to zero during training. Automatically disabled at inference.">nn.Dropout</span>(config.dropout)
+        self.n_head = config.n_head
+        self.n_embd = config.n_embd
+        self.dropout = config.dropout</div>
+
+    <div class="cw-visual">
+      <div class="cw-label">What c_attn does to one token's vector (n_embd = 768)</div>
+      <div class="arrow-down">input token vector</div>
+      <div class="vec-row"><div class="vec-bar vec-full">768 values</div></div>
+      <div class="arrow-down">↓ c_attn (one big linear layer)</div>
+      <div class="vec-row"><div class="vec-bar vec-triple" style="width:100%;max-width:560px">2304 values &nbsp;(768 × 3)</div></div>
+      <div class="arrow-down">↓ .split() — cut into thirds</div>
+      <div class="vec-row">
+        <div class="vec-bar vec-q">Q &nbsp;768</div>
+        <div class="vec-bar vec-k">K &nbsp;768</div>
+        <div class="vec-bar vec-v">V &nbsp;768</div>
+      </div>
+    </div>
+    <p style="margin-top:10px; font-size:0.85rem; color:var(--text-secondary)">One linear layer produces three outputs at once instead of three separate layers — same result, one GPU operation. Q, K, V are each the same size as the original token vector. <code style="background:#1e293b;padding:2px 5px;border-radius:3px;color:var(--accent-soft)">c_proj</code> is a separate layer that runs at the very end and mixes the final result back into one vector. Dropout randomly zeros values during training to reduce overfitting.</p>
+
+    <!-- ── CHUNK 2: causal mask ── -->
+    <h3 style="margin-top:32px;color:var(--text);font-size:1rem">2. The "no looking ahead" mask</h3>
+    <div class="cw-box">        self.<span class="code-tip" data-tip="True if PyTorch 2.0+ is installed. Flash Attention handles the causal mask internally so you don't need to store it separately.">flash</span> = <span class="code-tip" data-tip="Python built-in. Checks if an object has a named attribute. Returns True or False. Here it checks whether torch.nn.functional has the Flash Attention function — i.e. whether PyTorch 2.0+ is installed.">hasattr</span>(torch.nn.functional, 'scaled_dot_product_attention')
+        if not self.flash:
+            self.<span class="code-tip" data-tip="Saves a tensor with the model that is never trained. It stays fixed forever — backprop ignores it.">register_buffer</span>("bias", <span class="code-tip" data-tip="Builds a lower-triangular grid of 1s. Row 0 has one 1, row 1 has two, etc. The 1s mark which positions are allowed to attend.">torch.tril</span>(torch.ones(<span class="code-tip" data-tip="block_size: maximum sequence length the model can handle. e.g. 1024 tokens.">config.block_size</span>, config.block_size))
+                                        .view(1, 1, config.block_size, config.block_size))</div>
+
+    <div class="cw-visual">
+      <div class="cw-label">Sentence: "The cat sat on" — which tokens can each word see?</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin-top:8px">
+        <div>
+          <div style="font-size:0.72rem;color:var(--dim);margin-bottom:4px">mask grid (✓ = allowed, ✗ = blocked)</div>
+          <div class="mask-grid">
+            <div class="mask-cell mask-hdr"></div>
+            <div class="mask-cell mask-hdr">The</div>
+            <div class="mask-cell mask-hdr">cat</div>
+            <div class="mask-cell mask-hdr">sat</div>
+            <div class="mask-cell mask-hdr">on</div>
+            <div class="mask-cell mask-hdr">The</div>
+            <div class="mask-cell mask-on">✓</div>
+            <div class="mask-cell mask-off">✗</div>
+            <div class="mask-cell mask-off">✗</div>
+            <div class="mask-cell mask-off">✗</div>
+            <div class="mask-cell mask-hdr">cat</div>
+            <div class="mask-cell mask-on">✓</div>
+            <div class="mask-cell mask-on">✓</div>
+            <div class="mask-cell mask-off">✗</div>
+            <div class="mask-cell mask-off">✗</div>
+            <div class="mask-cell mask-hdr">sat</div>
+            <div class="mask-cell mask-on">✓</div>
+            <div class="mask-cell mask-on">✓</div>
+            <div class="mask-cell mask-on">✓</div>
+            <div class="mask-cell mask-off">✗</div>
+            <div class="mask-cell mask-hdr">on</div>
+            <div class="mask-cell mask-on">✓</div>
+            <div class="mask-cell mask-on">✓</div>
+            <div class="mask-cell mask-on">✓</div>
+            <div class="mask-cell mask-on">✓</div>
+          </div>
+        </div>
+        <div style="font-size:0.82rem;color:var(--text-secondary);max-width:280px;padding-top:24px">
+          Row = "this token is being processed"<br>
+          Column = "can it see this other token?"<br><br>
+          "The" can only see itself.<br>
+          "cat" can see "The" and itself.<br>
+          "sat" can see everything before it.<br><br>
+          Blocked cells get set to <strong style="color:#f87171">−∞</strong> before softmax — which makes their attention weight zero.
+        </div>
+      </div>
+    </div>
+    <p style="margin-top:10px; font-size:0.85rem; color:var(--text-secondary)">This mask is only needed if Flash Attention is unavailable. Flash Attention (PyTorch 2.0+) applies the same rule internally. <code style="background:#1e293b;padding:2px 5px;border-radius:3px;color:var(--accent-soft)">register_buffer</code> saves the grid with the model without making it trainable — it never changes.</p>
+
+    <!-- ── CHUNK 3: Q K V + heads ── -->
+    <h3 style="margin-top:32px;color:var(--text);font-size:1rem">3. Splitting Q, K, V across multiple heads</h3>
+    <div class="cw-box">    def forward(self, x):
+        <span class="code-tip" data-tip="Batch size — how many sequences are processed at the same time. e.g. 16 sequences in parallel.">B</span>, <span class="code-tip" data-tip="Sequence length — number of tokens in each input. e.g. 1024 tokens.">T</span>, <span class="code-tip" data-tip="Channels = n_embd. The size of each token's vector. e.g. 768 numbers per token.">C</span> = x.size()
+
+        <span class="code-tip" data-tip="Query — what this token is searching for. Used to score how relevant other tokens are.">q</span>, <span class="code-tip" data-tip="Key — what each token advertises about itself. Compared against queries to produce scores.">k</span>, <span class="code-tip" data-tip="Value — the actual content a token shares when another token attends to it.">v</span> = self.c_attn(x).<span class="code-tip" data-tip="Cuts the 3x768 output into three equal 768-value chunks: Q, K, V.">split</span>(self.n_embd, dim=2)
+        k = k.<span class="code-tip" data-tip="Reshapes from [B, T, 768] to [B, T, 12, 64] — slicing the 768 values into 12 chunks of 64, one per head.">view</span>(B, T, self.n_head, C // self.n_head).<span class="code-tip" data-tip="Swaps dimensions so shape becomes [B, 12, T, 64]. PyTorch can now run all 12 heads in parallel like separate batch items.">transpose</span>(1, 2)
+        q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
+        v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)</div>
+
+    <div class="cw-visual">
+      <div class="cw-label">Q vector (768 values) sliced into 12 heads of 64 each</div>
+      <div class="vec-row" style="margin-bottom:8px"><div class="vec-bar vec-q" style="width:100%;max-width:580px">Q — 768 values</div></div>
+      <div class="arrow-down">↓ .view() — slice into 12 equal pieces</div>
+      <div class="head-grid" style="max-width:580px">
+        <div class="head-cell head-q">h1</div>
+        <div class="head-cell head-q">h2</div>
+        <div class="head-cell head-q">h3</div>
+        <div class="head-cell head-q">h4</div>
+        <div class="head-cell head-q">h5</div>
+        <div class="head-cell head-q">h6</div>
+        <div class="head-cell head-q">h7</div>
+        <div class="head-cell head-q">h8</div>
+        <div class="head-cell head-q">h9</div>
+        <div class="head-cell head-q">h10</div>
+        <div class="head-cell head-q">h11</div>
+        <div class="head-cell head-q">h12</div>
+      </div>
+      <div style="font-size:0.72rem;color:var(--dim);margin-top:6px">each block = 64 values &nbsp;·&nbsp; same split happens to K and V</div>
+    </div>
+    <p style="margin-top:10px; font-size:0.85rem; color:var(--text-secondary)">Multi-head attention means running the attention calculation 12 times in parallel, each on a 64-value slice instead of the full 768. Each head learns to notice different patterns — one might track which nouns relate to which verbs, another might track positions. The <code style="background:#1e293b;padding:2px 5px;border-radius:3px;color:var(--accent-soft)">.transpose()</code> is just a reshape so PyTorch can run all 12 at once — no calculation happens there.</p>
+
+    <!-- ── CHUNK 4: scores ── -->
+    <h3 style="margin-top:32px;color:var(--text);font-size:1rem">4. Scoring which tokens pay attention to which</h3>
+    <div class="cw-box">        if self.<span class="code-tip" data-tip="True if PyTorch 2.0+ is available. Flash Attention runs the same math but in the GPU's fast on-chip memory instead of VRAM — 2-4x faster.">flash</span>:
+            y = torch.nn.functional.<span class="code-tip" data-tip="Flash Attention. Computes Q x K scores, applies mask, softmax, multiplies by V — all without writing the full score matrix to VRAM.">scaled_dot_product_attention</span>(
+                    q, k, v, attn_mask=None,
+                    dropout_p=self.dropout if <span class="code-tip" data-tip="True when the model is in training mode (model.train()), False during inference (model.eval()). PyTorch sets this automatically — dropout only fires when True.">self.training</span> else 0,
+                    <span class="code-tip" data-tip="Tells Flash Attention to enforce the causal rule internally: each token can only attend to itself and earlier tokens.">is_causal</span>=True)
+        else:
+            att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+            att = att.<span class="code-tip" data-tip="Wherever the mask is 0 (a future token, blocked), replace that score with negative infinity. Softmax will then give it exactly 0% weight.">masked_fill</span>(self.bias[:,:,:T,:T] == 0, <span class="code-tip" data-tip="Negative infinity in Python. e^(-inf) = 0, so softmax gives these positions exactly 0% attention weight — effectively erasing them.">float('-inf')</span>)
+            att = F.<span class="code-tip" data-tip="Converts raw scores into percentages that sum to 100% per row. Negative infinity becomes 0%. Higher scores get higher percentages.">softmax</span>(att, dim=-1)
+            att = self.attn_dropout(att)
+            y = att @ <span class="code-tip" data-tip="Multiply the percentage weights by V. Each token's output becomes a weighted average of all value vectors — weighted by how much it attended to each token.">v</span></div>
+
+    <div class="cw-visual">
+      <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+        <div>
+          <div class="cw-label">Step 1 — raw scores: how much does each token match each other? (q @ k.T)</div>
+          <div class="score-grid">
+            <div class="score-cell score-hdr"></div>
+            <div class="score-cell score-hdr">The</div>
+            <div class="score-cell score-hdr">cat</div>
+            <div class="score-cell score-hdr">sat</div>
+            <div class="score-cell score-hdr">on</div>
+            <div class="score-cell score-hdr">The</div>
+            <div class="score-cell score-val">0.8</div>
+            <div class="score-cell score-zero">−∞</div>
+            <div class="score-cell score-zero">−∞</div>
+            <div class="score-cell score-zero">−∞</div>
+            <div class="score-cell score-hdr">cat</div>
+            <div class="score-cell score-val">0.3</div>
+            <div class="score-cell score-val">0.9</div>
+            <div class="score-cell score-zero">−∞</div>
+            <div class="score-cell score-zero">−∞</div>
+            <div class="score-cell score-hdr">sat</div>
+            <div class="score-cell score-val">0.2</div>
+            <div class="score-cell score-hi">1.4</div>
+            <div class="score-cell score-val">0.7</div>
+            <div class="score-cell score-zero">−∞</div>
+            <div class="score-cell score-hdr">on</div>
+            <div class="score-cell score-val">0.1</div>
+            <div class="score-cell score-val">0.6</div>
+            <div class="score-cell score-hi">1.2</div>
+            <div class="score-cell score-val">0.4</div>
+          </div>
+        </div>
+        <div>
+          <div class="cw-label">Step 2 — after softmax: turned into percentages per row</div>
+          <div class="score-grid">
+            <div class="score-cell score-hdr"></div>
+            <div class="score-cell score-hdr">The</div>
+            <div class="score-cell score-hdr">cat</div>
+            <div class="score-cell score-hdr">sat</div>
+            <div class="score-cell score-hdr">on</div>
+            <div class="score-cell score-hdr">The</div>
+            <div class="score-cell score-hi">100%</div>
+            <div class="score-cell score-zero">0%</div>
+            <div class="score-cell score-zero">0%</div>
+            <div class="score-cell score-zero">0%</div>
+            <div class="score-cell score-hdr">cat</div>
+            <div class="score-cell score-val">30%</div>
+            <div class="score-cell score-hi">70%</div>
+            <div class="score-cell score-zero">0%</div>
+            <div class="score-cell score-zero">0%</div>
+            <div class="score-cell score-hdr">sat</div>
+            <div class="score-cell score-val">12%</div>
+            <div class="score-cell score-hi">58%</div>
+            <div class="score-cell score-val">30%</div>
+            <div class="score-cell score-zero">0%</div>
+            <div class="score-cell score-hdr">on</div>
+            <div class="score-cell score-val">8%</div>
+            <div class="score-cell score-val">26%</div>
+            <div class="score-cell score-hi">51%</div>
+            <div class="score-cell score-val">15%</div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:0.72rem;color:var(--dim);margin-top:8px">−∞ masked positions become 0% after softmax. Each row always sums to 100%.</div>
+    </div>
+    <p style="margin-top:10px; font-size:0.85rem; color:var(--text-secondary)">Those percentages are then used to mix the V vectors: "sat"'s output = 12% of The's V + 58% of cat's V + 30% of its own V. That is what makes "sat" aware of its context. Both Flash and manual paths compute this — Flash just avoids writing the score grid to VRAM by tiling the calculation in smaller on-chip blocks.</p>
+
+    <!-- ── CHUNK 5: reassemble ── -->
+    <h3 style="margin-top:32px;color:var(--text);font-size:1rem">5. Putting the heads back together</h3>
+    <div class="cw-box">        y = y.<span class="code-tip" data-tip="Undoes the earlier dimension swap — moves heads back from position 1 to position 2 in the shape.">transpose</span>(1, 2).<span class="code-tip" data-tip="Forces the data to be laid out sequentially in memory. transpose() is lazy — it only changes index mapping without moving data. view() needs actual sequential memory.">contiguous</span>().<span class="code-tip" data-tip="Reshapes from [B, T, 12, 64] back to [B, T, 768] — stitching all 12 head outputs back into one vector per token.">view</span>(B, T, C)
+        y = self.resid_dropout(self.<span class="code-tip" data-tip="Final linear layer. Takes the combined 768-value vector and learns the best way to mix what all 12 heads found.">c_proj</span>(y))
+        return y</div>
+
+    <div class="cw-visual">
+      <div class="cw-label">12 head outputs (64 values each) → glued back into one vector (768)</div>
+      <div class="head-grid" style="max-width:580px;margin-bottom:8px">
+        <div class="head-cell" style="background:#1e3a5f">h1</div>
+        <div class="head-cell" style="background:#1e3a5f">h2</div>
+        <div class="head-cell" style="background:#1e3a5f">h3</div>
+        <div class="head-cell" style="background:#1e3a5f">h4</div>
+        <div class="head-cell" style="background:#1e3a5f">h5</div>
+        <div class="head-cell" style="background:#1e3a5f">h6</div>
+        <div class="head-cell" style="background:#1e3a5f">h7</div>
+        <div class="head-cell" style="background:#1e3a5f">h8</div>
+        <div class="head-cell" style="background:#1e3a5f">h9</div>
+        <div class="head-cell" style="background:#1e3a5f">h10</div>
+        <div class="head-cell" style="background:#1e3a5f">h11</div>
+        <div class="head-cell" style="background:#1e3a5f">h12</div>
+      </div>
+      <div class="arrow-down">↓ .transpose() + .view() — stitch back together</div>
+      <div class="vec-row" style="margin-top:4px"><div class="vec-bar" style="background:#1e40af;width:100%;max-width:580px">768 values — one vector per token again</div></div>
+      <div class="arrow-down">↓ c_proj — one more linear layer to mix the result</div>
+      <div class="vec-row"><div class="vec-bar" style="background:#1e3a5f;width:100%;max-width:580px">768 values — returned to the TransformerBlock</div></div>
+    </div>
+    <p style="margin-top:10px; font-size:0.85rem; color:var(--text-secondary)"><code style="background:#1e293b;padding:2px 5px;border-radius:3px;color:var(--accent-soft)">.transpose()</code> undoes the earlier reorder. <code style="background:#1e293b;padding:2px 5px;border-radius:3px;color:var(--accent-soft)">.contiguous()</code> forces the tensor to be laid out sequentially in memory — transpose is lazy and does not actually move data, and <code style="background:#1e293b;padding:2px 5px;border-radius:3px;color:var(--accent-soft)">.view()</code> needs it sequential to work. Then <code style="background:#1e293b;padding:2px 5px;border-radius:3px;color:var(--accent-soft)">c_proj</code> runs one final linear layer that learns how to best combine what all 12 heads found.</p>
+  </div>
+
+  <!-- MLP CODE -->
+  <div class="section" id="mlp-code">
+    <div class="section-label">Deep Dive &nbsp;·&nbsp; Optional</div>
+    <h2>Reading MLP</h2>
+    <p>The feedforward network inside every transformer block. Runs after attention on each token independently.</p>
+
+    <h3 style="margin-top:28px;color:var(--text);font-size:1rem">1. The layers</h3>
+    <div class="cw-box">class MLP(nn.Module):
+
+    def __init__(self, config):
+        <span class="code-tip" data-tip="Runs the parent class (nn.Module) setup. Required in every PyTorch class.">super().__init__()</span>
+        self.<span class="code-tip" data-tip="First linear layer. Expands each token vector from n_embd (768) to 4x n_embd (3072). The expansion gives the model more room to work with.">c_fc</span>    = <span class="code-tip" data-tip="A learnable matrix multiply: output = input x weights + bias. Weights are updated every training step.">nn.Linear</span>(config.n_embd, 4 * config.n_embd, bias=config.bias)
+        self.<span class="code-tip" data-tip="An activation function. Adds non-linearity between the two linear layers. Without it, two linear layers would just collapse into one. GELU is smoother than ReLU and works better in practice for transformers.">gelu</span>    = nn.GELU()
+        self.<span class="code-tip" data-tip="Second linear layer. Squeezes back from 4x n_embd (3072) down to n_embd (768). Restores the vector size so it can be added back to the residual stream.">c_proj</span>  = <span class="code-tip" data-tip="A learnable matrix multiply: output = input x weights + bias. Weights start random and are updated every training step.">nn.Linear</span>(4 * config.n_embd, config.n_embd, bias=config.bias)
+        self.dropout = <span class="code-tip" data-tip="Randomly zeros a fraction of values during training to reduce overfitting. Disabled automatically at inference.">nn.Dropout</span>(config.dropout)</div>
+
+    <div class="cw-visual">
+      <div class="cw-label">What MLP does to one token's vector</div>
+      <div class="vec-row"><div class="vec-bar vec-full" style="width:180px">768 values</div></div>
+      <div class="arrow-down">↓ c_fc (linear layer — expand)</div>
+      <div class="vec-row"><div class="vec-bar" style="background:#7e22ce;width:100%;max-width:560px">3072 values &nbsp;(768 × 4)</div></div>
+      <div class="arrow-down">↓ GELU (activation — bends the values, adds non-linearity)</div>
+      <div class="vec-row"><div class="vec-bar" style="background:#6b21a8;width:100%;max-width:560px">3072 values &nbsp;(same shape, values changed)</div></div>
+      <div class="arrow-down">↓ c_proj (linear layer — compress back)</div>
+      <div class="vec-row"><div class="vec-bar vec-full" style="width:180px">768 values</div></div>
+    </div>
+
+    <h3 style="margin-top:28px;color:var(--text);font-size:1rem">2. The forward pass</h3>
+    <div class="cw-box">    def forward(self, x):
+        x = self.<span class="code-tip" data-tip="Expand: 768 → 3072. Each of the 768 input values gets mixed into 3072 output values via the learned weight matrix.">c_fc</span>(x)
+        x = self.<span class="code-tip" data-tip="Activation function. Bends the values so the model can learn non-linear patterns. Two linear layers with no activation in between are mathematically identical to one — GELU breaks that.">gelu</span>(x)
+        x = self.<span class="code-tip" data-tip="Compress: 3072 → 768. Mixes the activated values back down to the original size.">c_proj</span>(x)
+        x = self.<span class="code-tip" data-tip="Randomly zeros some values during training. Only active during training — no effect at inference.">dropout</span>(x)
+        return x</div>
+    <p style="margin-top:10px;font-size:0.85rem;color:var(--text-secondary)">The MLP is where the model stores factual knowledge. Attention decides which tokens to mix — the MLP is where the actual information processing happens on each token after that mix. The 4× expansion is a deliberate design choice: wider middle layer = more capacity to learn complex patterns.</p>
+  </div>
+
+  <!-- BLOCK CODE -->
+  <div class="section" id="block-code">
+    <div class="section-label">Deep Dive &nbsp;·&nbsp; Optional</div>
+    <h2>Reading TransformerBlock</h2>
+    <p>One complete transformer block — attention followed by MLP, with residual connections around both.</p>
+
+    <h3 style="margin-top:28px;color:var(--text);font-size:1rem">1. The layers</h3>
+    <div class="cw-box">class Block(nn.Module):
+
+    def __init__(self, config):
+        <span class="code-tip" data-tip="Runs the parent class (nn.Module) setup. Required in every PyTorch class.">super().__init__()</span>
+        self.<span class="code-tip" data-tip="LayerNorm: normalizes all 768 values in a token's vector to have mean 0, variance 1. Keeps numbers in a stable range so training doesn't blow up. Applied before attention (pre-norm).">ln_1</span> = <span class="code-tip" data-tip="Normalization layer. Takes a vector of n_embd values and rescales them so they have a consistent scale. Learned scale and shift parameters are added after.">nn.LayerNorm</span>(config.n_embd)
+        self.attn = CausalSelfAttention(config)
+        self.<span class="code-tip" data-tip="Second LayerNorm, applied before the MLP. Same idea as ln_1 — stabilizes the values before they enter the MLP.">ln_2</span> = <span class="code-tip" data-tip="Normalization layer. Rescales a vector so its values have mean 0 and variance 1. Keeps numbers stable so training doesn't blow up.">nn.LayerNorm</span>(config.n_embd)
+        self.mlp  = MLP(config)</div>
+
+    <h3 style="margin-top:28px;color:var(--text);font-size:1rem">2. The forward pass — residual connections</h3>
+    <div class="cw-box">    def forward(self, x):
+        x = x + self.attn(self.<span class="code-tip" data-tip="Normalizes x before attention. The normalized copy goes into attention, but the original x is what gets added back in the residual.">ln_1</span>(x))
+        x = x + self.mlp(self.<span class="code-tip" data-tip="Normalizes x before MLP. Same pattern as ln_1.">ln_2</span>(x))
+        return x</div>
+
+    <div class="cw-visual">
+      <div class="cw-label">How the residual connection works — x always passes through unchanged</div>
+      <div style="display:flex;gap:0;align-items:stretch;margin-top:12px;max-width:560px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0;flex:1">
+          <div class="vec-bar" style="background:#1e3a5f;width:100%;margin-bottom:6px">x (input)</div>
+          <div style="color:var(--dim);font-size:0.8rem;margin:2px 0">↓ LayerNorm</div>
+          <div class="vec-bar" style="background:#1e40af;width:100%;margin-bottom:6px">x normalized</div>
+          <div style="color:var(--dim);font-size:0.8rem;margin:2px 0">↓ Attention</div>
+          <div class="vec-bar" style="background:#166534;width:100%;margin-bottom:6px">attention output</div>
+          <div style="color:var(--dim);font-size:0.8rem;margin:2px 0">↓ + original x</div>
+          <div class="vec-bar" style="background:#1e3a5f;width:100%">x (updated)</div>
+        </div>
+        <div style="width:140px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 16px">
+          <div style="font-size:0.78rem;color:var(--dim);text-align:center;line-height:1.5">The original x bypasses attention entirely and gets added back at the end.<br><br>Attention only needs to learn what to <em>change</em>, not carry the whole signal.</div>
+        </div>
+      </div>
+      <div style="font-size:0.72rem;color:var(--dim);margin-top:10px">Same pattern repeats for MLP. A full block = two of these residual steps stacked.</div>
+    </div>
+    <p style="margin-top:12px;font-size:0.85rem;color:var(--text-secondary)">The <code style="background:#1e293b;padding:2px 5px;border-radius:3px;color:var(--accent-soft)">x = x + ...</code> pattern is a residual connection. It means each sub-layer only has to learn a small adjustment, not a complete transformation. This makes very deep networks (12–96 blocks) trainable — without it, gradients vanish before reaching the early layers.</p>
+  </div>
+
+  <!-- GPT CODE -->
+  <div class="section" id="gpt-code">
+    <div class="section-label">Deep Dive &nbsp;·&nbsp; Optional</div>
+    <h2>Reading GPT</h2>
+    <p>The full model. Takes token IDs as input, runs them through embeddings and all the blocks, outputs a score for every word in the vocabulary.</p>
+
+    <h3 style="margin-top:28px;color:var(--text);font-size:1rem">1. The components</h3>
+    <div class="cw-box">class GPT(nn.Module):
+
+    def __init__(self, config):
+        <span class="code-tip" data-tip="Runs the parent class (nn.Module) setup. Required in every PyTorch class.">super().__init__()</span>
+        self.transformer = nn.ModuleDict(dict(
+            <span class="code-tip" data-tip="Word Token Embeddings. A lookup table: given a token ID (an integer like 8765), returns a learned vector of n_embd numbers. Starts random, trained alongside everything else.">wte</span>  = <span class="code-tip" data-tip="A lookup table of learnable vectors. nn.Embedding(vocab_size, n_embd) creates one vector per word in the vocabulary. Feed it a token ID, get back a vector.">nn.Embedding</span>(config.vocab_size, config.n_embd),
+            <span class="code-tip" data-tip="Word Position Embeddings. Same idea as wte but for positions: position 0 gets one learned vector, position 1 gets another, etc. Tells the model where each token sits in the sequence.">wpe</span>  = <span class="code-tip" data-tip="A lookup table of learnable vectors. Feed it an integer index, get back a vector. Here used for position indices 0, 1, 2...">nn.Embedding</span>(config.block_size, config.n_embd),
+            drop = <span class="code-tip" data-tip="Dropout applied to the initial embeddings before the blocks run.">nn.Dropout</span>(config.dropout),
+            <span class="code-tip" data-tip="The stack of transformer blocks. n_layer blocks (e.g. 12) running one after another. Each block refines the token representations.">h</span>    = <span class="code-tip" data-tip="A list of PyTorch modules that are properly registered so their parameters are tracked for training. Here it holds n_layer Block instances.">nn.ModuleList</span>([Block(config) for _ in range(config.n_layer)]),
+            <span class="code-tip" data-tip="Final LayerNorm applied after all blocks, before the output head. Same normalization idea as inside each block.">ln_f</span> = <span class="code-tip" data-tip="Normalization layer. Rescales a vector so its values have mean 0 and variance 1. Keeps numbers stable so training doesn't blow up.">nn.LayerNorm</span>(config.n_embd),
+        ))
+        self.<span class="code-tip" data-tip="The output layer. Maps each token's 768-value vector to vocab_size scores (e.g. 50,257). The score for each word = how likely that word is next. No bias — this is standard for language model heads.">lm_head</span> = <span class="code-tip" data-tip="A learnable matrix multiply: output = input x weights + bias. Here bias=False — the output head works better without it in practice.">nn.Linear</span>(config.n_embd, config.vocab_size, bias=False)</div>
+
+    <div class="cw-visual">
+      <div class="cw-label">What the model contains</div>
+      <div style="display:flex;flex-direction:column;gap:6px;max-width:480px;margin-top:8px">
+        <div class="vec-bar" style="background:#854d0e;width:100%">wte — one vector per vocabulary word (50,257 × 768)</div>
+        <div class="vec-bar" style="background:#854d0e;width:100%">wpe — one vector per position (1024 × 768)</div>
+        <div class="vec-bar" style="background:#1e40af;width:100%">Block 1 — attention + MLP</div>
+        <div class="vec-bar" style="background:#1e40af;width:100%">Block 2 — attention + MLP</div>
+        <div style="text-align:center;color:var(--dim);font-size:0.75rem">· · · (n_layer blocks total, e.g. 12)</div>
+        <div class="vec-bar" style="background:#1e40af;width:100%">Block 12 — attention + MLP</div>
+        <div class="vec-bar" style="background:#166534;width:100%">lm_head — 768 → 50,257 scores</div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:28px;color:var(--text);font-size:1rem">2. The forward pass</h3>
+    <div class="cw-box">    def forward(self, idx, targets=None):
+        b, t = idx.size()
+        <span class="code-tip" data-tip="Creates a tensor [0, 1, 2, ..., t-1] — the position index for each token in the sequence.">pos</span> = <span class="code-tip" data-tip="Creates a 1D tensor of sequential integers. Like Python's range() but produces a tensor. torch.arange(0, t) gives [0, 1, 2, ..., t-1].">torch.arange</span>(0, t, <span class="code-tip" data-tip="Data type: 64-bit integers. Position indices must be whole numbers, not floats.">dtype=torch.long</span>, <span class="code-tip" data-tip="Puts the tensor on the same device (CPU or GPU) as the input tensor. Tensors on different devices can't interact.">device=idx.device</span>)
+
+        <span class="code-tip" data-tip="Token embeddings: converts each token ID to its learned vector. Shape: [B, T, 768].">tok_emb</span> = self.transformer.wte(idx)
+        <span class="code-tip" data-tip="Position embeddings: converts each position number (0,1,2...) to its learned vector. Shape: [T, 768].">pos_emb</span> = self.transformer.wpe(pos)
+        x = self.transformer.drop(<span class="code-tip" data-tip="Add token vector + position vector. Each token now carries both what it is and where it sits. This is the input to the first block.">tok_emb + pos_emb</span>)
+        for block in self.transformer.h:
+            x = block(x)
+        x = self.transformer.ln_f(x)
+
+        if <span class="code-tip" data-tip="Python None check. targets is the correct next-token sequence, passed in during training. During generation, you don't have targets, so None is passed and only logits are returned.">targets is not None</span>:
+            <span class="code-tip" data-tip="Raw scores — one number per vocabulary word per token position. Not probabilities yet. Shape: [B, T, vocab_size].">logits</span> = self.lm_head(x)
+            loss = <span class="code-tip" data-tip="The loss function. Compares predicted scores against actual next tokens. Internally converts logits to probabilities and measures how wrong they are. Lower = better predictions.">F.cross_entropy</span>(<span class="code-tip" data-tip="Reshapes logits from [B, T, vocab_size] to [B*T, vocab_size] — flattens batch and sequence into one dimension so cross_entropy can score every position at once. -1 tells PyTorch to calculate that dimension automatically.">logits.view(-1, logits.size(-1))</span>, <span class="code-tip" data-tip="Flattens targets from [B, T] to [B*T] — one correct token ID per position, matching the flattened logits.">targets.view(-1)</span>)
+        else:
+            logits = self.lm_head(x[:, [-1], :])
+            loss = None
+
+        return <span class="code-tip" data-tip="logits: the raw scores for every possible next token. loss: how wrong the predictions were (only computed during training when targets are provided).">logits, loss</span></div>
+
+    <div class="cw-visual">
+      <div class="cw-label">Data flow through the full model</div>
+      <div style="display:flex;flex-direction:column;gap:4px;max-width:500px;margin-top:8px">
+        <div class="vec-bar" style="background:#334155;width:100%">idx — token IDs &nbsp;[B, T] &nbsp;e.g. [16, 1024] integers</div>
+        <div class="arrow-down">↓ wte + wpe</div>
+        <div class="vec-bar" style="background:#854d0e;width:100%">x — token + position vectors &nbsp;[B, T, 768]</div>
+        <div class="arrow-down">↓ 12 × Block (attention + MLP)</div>
+        <div class="vec-bar" style="background:#1e40af;width:100%">x — contextual representations &nbsp;[B, T, 768]</div>
+        <div class="arrow-down">↓ LayerNorm + lm_head</div>
+        <div class="vec-bar" style="background:#166534;width:100%">logits — scores for each vocab word &nbsp;[B, T, 50257]</div>
+        <div class="arrow-down">↓ cross_entropy vs targets</div>
+        <div class="vec-bar" style="background:#7e22ce;width:100%">loss — one number. This is what backprop minimises.</div>
+      </div>
+    </div>
+    <p style="margin-top:12px;font-size:0.85rem;color:var(--text-secondary)">The <code style="background:#1e293b;padding:2px 5px;border-radius:3px;color:var(--accent-soft)">if targets is not None</code> branch runs during training — it computes loss. The else branch runs during generation — it only scores the last token position because that's the one you're predicting next.</p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- NEXT -->
+  <div class="section" id="next">
+    <div class="section-label">What's next</div>
+    <h2>Start writing code</h2>
+    <p>Every piece in nanoGPT's <code style="background:var(--surface);padding:2px 6px;border-radius:4px;color:var(--accent-soft)">model.py</code> maps directly to a concept on this page. The confusing variable names and reshapes are just implementation details around these ideas.</p>
+    <p>Start with <strong>CausalSelfAttention.__init__</strong>. Define the linear layers that produce Q, K, and V. You now know why they exist.</p>
+  </div>
+
+</main>
+
+<script>
+  // Highlight active nav link based on scroll position
+  const links = document.querySelectorAll('.nav-link');
+  const sections = document.querySelectorAll('.section[id]');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        links.forEach(l => {
+          l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+        });
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+
+  // Hover tooltips for .code-tip spans
+  const tipEl = document.createElement('div');
+  tipEl.style.cssText = 'position:fixed;background:#1e293b;color:#e2e8f0;padding:8px 12px;border-radius:7px;font-size:0.78rem;max-width:260px;line-height:1.5;border:1px solid #334155;pointer-events:none;opacity:0;transition:opacity 0.12s;z-index:9999;font-family:sans-serif;white-space:normal;box-shadow:0 4px 16px rgba(0,0,0,0.4)';
+  document.body.appendChild(tipEl);
+  document.querySelectorAll('.code-tip').forEach(el => {
+    el.addEventListener('mouseenter', () => { tipEl.textContent = el.dataset.tip; tipEl.style.opacity = '1'; });
+    el.addEventListener('mousemove', e => {
+      const x = Math.min(e.clientX + 14, window.innerWidth - 278);
+      const y = Math.max(e.clientY - 48, 8);
+      tipEl.style.left = x + 'px'; tipEl.style.top = y + 'px';
+    });
+    el.addEventListener('mouseleave', () => { tipEl.style.opacity = '0'; });
+  });
+</script>
+
+</body>
+</html>
