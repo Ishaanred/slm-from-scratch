@@ -12,11 +12,20 @@ A hands-on, end-to-end curriculum covering every step of the LLM training pipeli
 
 | Phase | Status |
 |-------|--------|
-| 1. NanoGPT — build a transformer from scratch | **← Start here** |
+| 1. NanoGPT — build a transformer from scratch | **In progress** |
 | 2. Tokenizer + Data Engineering | Not started |
 | 3. Scaling Law Experiments | Not started |
 | 4. Knowledge Distillation | Not started |
 | 5. Evaluation & Feedback Loop | Not started |
+
+**Phase 1 progress:**
+- [x] Understand transformer architecture — see [`docs/how-transformers-work.html`](docs/how-transformers-work.html)
+- [x] Write `src/model.py` — GPT, CausalSelfAttention, MLP, Block
+- [x] Download OpenWebText dataset (~38GB)
+- [ ] Write `train_step()` in `src/train.py`
+- [ ] Tokenize data — `python data/prepare.py`
+- [ ] First training run — 5K steps
+- [ ] Watch it generate text
 
 ---
 
@@ -67,6 +76,45 @@ Benchmark on HellaSwag, PIQA, ARC, GSM8K, HumanEval. Find the worst-performing e
 
 ---
 
+## Running Phase 1
+
+### 1. Install dependencies
+```bash
+pip install torch transformers datasets tokenizers wandb tqdm einops
+```
+
+### 2. Verify GPU
+```bash
+python -c "import torch; print(torch.cuda.get_device_name(0))"
+```
+
+### 3. Tokenize the dataset
+OpenWebText is already downloaded. Run once to produce `data/train.bin` and `data/val.bin`:
+```bash
+python data/prepare.py
+```
+Takes ~20-30 minutes on CPU. GPU is not used here.
+
+### 4. (Optional) Set up Weights & Biases
+Free experiment tracking with live loss curves. Skip this on a first run and just watch terminal output.
+```bash
+wandb login
+```
+To skip wandb, comment out the `wandb.init(...)` line in `src/train.py`.
+
+### 5. Write train_step()
+Open `src/train.py` and implement `train_step()`. The docstring tells you what goes in it. The rest of the training loop is already written.
+
+### 6. Train
+```bash
+python src/train.py
+```
+Expected time on RTX 5070 Ti:
+- 5K steps (~330M tokens): 1.5–2 hours
+- Full 1B token run: 6–8 hours
+
+---
+
 ## Stack
 
 | Purpose | Tool |
@@ -75,7 +123,7 @@ Benchmark on HellaSwag, PIQA, ARC, GSM8K, HumanEval. Find the worst-performing e
 | Models & data | HuggingFace `transformers`, `datasets`, `tokenizers` |
 | Teacher inference | llama.cpp (Qwen 3.6 35B MoE, 4-bit) |
 | Teacher API fallback | DeepSeek Flash v4, Groq |
-| Experiment tracking | Weights & Biases |
+| Experiment tracking | Weights & Biases (optional for Phase 1) |
 | Evaluation | EleutherAI `lm-evaluation-harness` |
 | Data filtering | `datatrove` / `text-dedup` |
 | Cloud (heavy runs) | RunPod 5090 |
@@ -86,29 +134,30 @@ Benchmark on HellaSwag, PIQA, ARC, GSM8K, HumanEval. Find the worst-performing e
 
 ```
 slm-from-scratch/
-├── configs/              # YAML configs per model size and training run
 ├── src/
-│   ├── model.py          # GPT model — Phase 1 entry point
-│   ├── trainer.py        # Training loop
+│   ├── model.py          # GPT model — transformer architecture
+│   ├── train.py          # Training loop — write train_step() here
 │   ├── tokenizer_/       # BPE tokenizer training — Phase 2
-│   ├── data/             # Pipeline: filtering, dedup, synthetic gen — Phase 2
+│   ├── data/             # Filtering, dedup, synthetic gen — Phase 2
 │   └── eval/             # lm-eval-harness wrappers — Phase 5
+├── data/
+│   ├── prepare.py        # Tokenizes OpenWebText into train.bin/val.bin
+│   ├── openwebtext/      # Raw dataset (~38GB, not in git)
+│   ├── train.bin         # Tokenized training data (not in git)
+│   └── val.bin           # Tokenized validation data (not in git)
+├── checkpoints/          # Saved model weights (not in git)
 ├── experiments/          # Scaling law logs and plots — Phase 3
-├── notebooks/            # Analysis and visualization
 └── docs/
-    └── plan.md           # Full 2-month roadmap with task breakdowns
+    ├── plan.md           # Full 2-month roadmap with task breakdowns
+    └── how-transformers-work.html  # Visual explainer — start here
 ```
 
 ---
 
-## Setup
+## Learning Resource
 
-```bash
-pip install torch transformers datasets tokenizers wandb tqdm einops
+[`docs/how-transformers-work.html`](docs/how-transformers-work.html) — a visual guide to transformer internals built alongside this project. Covers tokenization, embeddings, attention, training, and the full nanoGPT codebase with interactive diagrams and hover tooltips on every code term. Open it in a browser.
 
-# Verify GPU
-python -c "import torch; print(torch.cuda.get_device_name(0))"
-# Expected: NVIDIA GeForce RTX 5070 Ti
-```
+---
 
 Full task breakdown: [`docs/plan.md`](docs/plan.md)
