@@ -12,31 +12,37 @@ A hands-on, end-to-end curriculum covering every step of the LLM training pipeli
 
 | Phase | Status |
 |-------|--------|
-| 1. NanoGPT — build a transformer from scratch | **In progress** |
+| 1. NanoGPT — build a transformer from scratch | **Complete** |
 | 2. Tokenizer + Data Engineering | Not started |
 | 3. Scaling Law Experiments | Not started |
 | 4. Knowledge Distillation | Not started |
 | 5. Evaluation & Feedback Loop | Not started |
 
-**Phase 1 progress:**
+**Phase 1 — complete:**
 - [x] Understand transformer architecture — see [`docs/how-transformers-work.html`](docs/how-transformers-work.html)
-- [x] Write `src/model.py` — GPT, CausalSelfAttention, MLP, Block
-- [x] Download OpenWebText dataset (~38GB)
-- [ ] Write `train_step()` in `src/train.py`
-- [ ] Tokenize data — `python data/prepare.py`
-- [ ] First training run — 5K steps
-- [ ] Watch it generate text
+- [x] Write `src/model.py` — GPT, CausalSelfAttention, MLP, Block from scratch in PyTorch
+- [x] Download and process OpenWebText dataset (~38GB, 8M documents)
+- [x] Tokenize data with GPT-2 tokenizer — produces 17GB `train.bin` (~8.5B tokens)
+- [x] Write `train_step()` — bfloat16 autocast, gradient accumulation, grad norm clipping
+- [x] First training run — 5K steps, val loss 5.12, ~15 min on RTX 5070 Ti
+- [x] Text generation — `python src/generate.py --prompt "..."`
 
 ---
 
 ## Phases
 
 ### Phase 1 — NanoGPT (Week 1)
-Build a GPT-style transformer in ~300 lines of PyTorch and train it on OpenWebText. No HuggingFace abstractions — every line of attention, MLP, and positional embedding is yours.
 
-**You'll understand:** how a transformer actually works, what `scaled_dot_product_attention` does, how loss drives learning.
+Build a GPT-style transformer in ~300 lines of PyTorch and train it on OpenWebText. No HuggingFace abstractions — every line of attention, MLP, and positional embedding written by hand.
 
-**Deliverable:** A 75M model generating coherent-ish English after 5K steps.
+**What was built:**
+- `CausalSelfAttention` — multi-head attention with Flash Attention (SDPA) and causal mask
+- `MLP` — two linear layers with GELU, 4x expansion
+- `Block` — pre-norm residual block (attention + MLP)
+- `GPT` — token + positional embeddings, N blocks, language model head
+- Full training loop with cosine LR schedule, gradient accumulation, W&B logging, checkpointing
+
+**Result:** 50M parameter model trained on OpenWebText. Val loss 5.12 after 5K steps (~80M tokens). Generates grammatically plausible English sentences.
 
 ---
 
@@ -89,29 +95,28 @@ python -c "import torch; print(torch.cuda.get_device_name(0))"
 ```
 
 ### 3. Tokenize the dataset
-OpenWebText is already downloaded. Run once to produce `data/train.bin` and `data/val.bin`:
+Run once to produce `data/train.bin` and `data/val.bin`:
 ```bash
 python data/prepare.py
 ```
-Takes ~20-30 minutes on CPU. GPU is not used here.
+Takes ~20-30 minutes on CPU.
 
 ### 4. (Optional) Set up Weights & Biases
-Free experiment tracking with live loss curves. Skip this on a first run and just watch terminal output.
 ```bash
 wandb login
 ```
 To skip wandb, comment out the `wandb.init(...)` line in `src/train.py`.
 
-### 5. Write train_step()
-Open `src/train.py` and implement `train_step()`. The docstring tells you what goes in it. The rest of the training loop is already written.
-
-### 6. Train
+### 5. Train
 ```bash
 python src/train.py
 ```
-Expected time on RTX 5070 Ti:
-- 5K steps (~330M tokens): 1.5–2 hours
-- Full 1B token run: 6–8 hours
+Expected time on RTX 5070 Ti: ~15 min for 5K steps.
+
+### 6. Generate text
+```bash
+python src/generate.py --prompt "The meaning of life is"
+```
 
 ---
 
@@ -119,14 +124,14 @@ Expected time on RTX 5070 Ti:
 
 | Purpose | Tool |
 |---------|------|
-| Training | PyTorch 2.5+, `torch.compile()`, Flash Attention (SDPA) |
+| Training | PyTorch 2.6+, `torch.compile()`, Flash Attention (SDPA) |
 | Models & data | HuggingFace `transformers`, `datasets`, `tokenizers` |
 | Teacher inference | llama.cpp (Qwen 3.6 35B MoE, 4-bit) |
 | Teacher API fallback | DeepSeek Flash v4, Groq |
-| Experiment tracking | Weights & Biases (optional for Phase 1) |
+| Experiment tracking | Weights & Biases |
 | Evaluation | EleutherAI `lm-evaluation-harness` |
 | Data filtering | `datatrove` / `text-dedup` |
-| Cloud (heavy runs) | RunPod 5090 |
+| Cloud (heavy runs) | RunPod |
 
 ---
 
@@ -135,15 +140,16 @@ Expected time on RTX 5070 Ti:
 ```
 slm-from-scratch/
 ├── src/
-│   ├── model.py          # GPT model — transformer architecture
-│   ├── train.py          # Training loop — write train_step() here
+│   ├── model.py          # GPT transformer — written from scratch
+│   ├── train.py          # Training loop with W&B, checkpointing, LR schedule
+│   ├── generate.py       # Text generation from a trained checkpoint
 │   ├── tokenizer_/       # BPE tokenizer training — Phase 2
 │   ├── data/             # Filtering, dedup, synthetic gen — Phase 2
 │   └── eval/             # lm-eval-harness wrappers — Phase 5
 ├── data/
 │   ├── prepare.py        # Tokenizes OpenWebText into train.bin/val.bin
 │   ├── openwebtext/      # Raw dataset (~38GB, not in git)
-│   ├── train.bin         # Tokenized training data (not in git)
+│   ├── train.bin         # Tokenized training data (~17GB, not in git)
 │   └── val.bin           # Tokenized validation data (not in git)
 ├── checkpoints/          # Saved model weights (not in git)
 ├── experiments/          # Scaling law logs and plots — Phase 3

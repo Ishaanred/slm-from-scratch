@@ -93,10 +93,14 @@ class TokenDataset(Dataset):
         self.block_size = block_size
 
     def __len__(self):
-        return len(self.data) - self.block_size
+        # cap at 100k so the DataLoader never tries to shuffle billions of indices
+        return min(100_000, len(self.data) - self.block_size)
 
     def __getitem__(self, idx):
-        chunk = torch.from_numpy(self.data[idx : idx + self.block_size + 1].astype(int))
+        # pick a random position each time so we see the full dataset over training
+        import numpy as np
+        i = np.random.randint(0, len(self.data) - self.block_size)
+        chunk = torch.from_numpy(self.data[i : i + self.block_size + 1].astype(int))
         x = chunk[:-1]
         y = chunk[1:]
         return x, y
@@ -118,7 +122,7 @@ def save_checkpoint(model, optimizer, iter_num, val_loss, config, path):
 
 
 def load_checkpoint(path, model, optimizer, device):
-    ckpt = torch.load(path, map_location=device)
+    ckpt = torch.load(path, map_location=device, weights_only=False)
     model.load_state_dict(ckpt["model"])
     optimizer.load_state_dict(ckpt["optimizer"])
     return ckpt["iter_num"], ckpt["val_loss"]
@@ -166,7 +170,19 @@ def train_step(model, optimizer, x, y, config, scaler):
         - Clip gradients with torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
         - Step optimizer, zero_grad
     """
-    raise NotImplementedError("Write train_step() in src/train.py")
+    with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+        logits, loss = model(x, y)
+
+    loss = loss / config.gradient_accumulation_steps
+    scaler.scale(loss).backward()
+
+    scaler.unscale_(optimizer)
+    torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
+    scaler.step(optimizer)
+    scaler.update()
+    optimizer.zero_grad(set_to_none=True)
+
+    return loss.item() * config.gradient_accumulation_steps
 
 
 # ---------------------------------------------------------------------------
@@ -178,7 +194,7 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
 
-    wandb.init(project=config.wandb_project, name=config.wandb_run_name, config=vars(config))
+    wandb.init(project=config.wandb_project, name=config.wandb_run_name, config=vars(config), resume="allow")
 
     # Model
     model_config = GPTConfig(
@@ -200,7 +216,7 @@ def main():
         betas=(config.beta1, config.beta2),
         device_type=device,
     )
-    scaler = torch.cuda.amp.GradScaler()
+    scaler = torch.amp.GradScaler('cuda')
 
     # Data
     train_dataset = TokenDataset(os.path.join(config.data_dir, "train.bin"), config.block_size)
@@ -244,6 +260,21 @@ def main():
                                  os.path.join(config.out_dir, "best.pt"))
 
         # Train step (your code)
+        def train_step(model, optimizer, x, y, config, scaler):
+
+            with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+                logits, loss = model(x, y)
+
+            loss = loss / config.gradient_accumulation_steps
+            scaler.scale(loss).backward()
+
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad(set_to_none=True)
+
+            return loss.item() * config.gradient_accumulation_steps
         loss = train_step(model, optimizer, x, y, config, scaler)
 
         # Log

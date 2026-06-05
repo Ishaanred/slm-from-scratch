@@ -142,3 +142,11 @@ class GPT(nn.Module):
             loss = None
 
         return logits, loss
+
+    def configure_optimizers(self, weight_decay, learning_rate, betas, device_type):
+        # weight decay only on 2D params (weights), not biases or layernorm
+        decay = {p for n, p in self.named_parameters() if p.requires_grad and p.dim() >= 2}
+        no_decay = {p for n, p in self.named_parameters() if p.requires_grad and p.dim() < 2}
+        groups = [{"params": list(decay), "weight_decay": weight_decay},
+                  {"params": list(no_decay), "weight_decay": 0.0}]
+        return torch.optim.AdamW(groups, lr=learning_rate, betas=betas)
