@@ -25,36 +25,22 @@ Phase 5: Evaluation + Feedback    →  Week 7-8     (~40 hrs)
 
 ---
 
-## Phase 1: NanoGPT Warm-Up — "I Understand Transformers Now"
+## Phase 1: NanoGPT Warm-Up — "I Understand Transformers Now" ✓ COMPLETE
 
 **Objective:** Build and train a minimal GPT from scratch (~300 lines of PyTorch). This demystifies every line of a transformer — attention, MLP blocks, positional embeddings, loss computation.
 
-**Why NanoGPT and not just HF?** Because when you write `F.scaled_dot_product_attention(q, k, v, is_causal=True)` yourself and it produces coherent text, you *own* the concept. HF abstracts this away.
+### Completed
+- [x] Environment setup — PyTorch 2.6, CUDA 13.2, W&B
+- [x] `model.py` — CausalSelfAttention (Flash Attention), MLP, Block, GPT written from scratch
+- [x] `train.py` — full training loop: bfloat16, gradient accumulation, cosine LR, checkpointing
+- [x] `generate.py` — top-k sampling from checkpoint
+- [x] OpenWebText tokenized — 17GB train.bin (~8.5B tokens)
+- [x] Run 1: 50M params, 5K steps, val loss 5.12
+- [x] Run 2: 77M params, 5K steps, val loss 5.24 (undertrained — expected)
+- [x] Visual explainer doc — `docs/phase1/how-transformers-work.html`
+- [x] Results documented — `docs/phase1/results.md`
 
-### Task 1.1: Set up the environment
-- Install: `torch`, `transformers`, `datasets`, `tokenizers`, `wandb`, `tqdm`, `einops`
-- Verify CUDA: `python -c "import torch; print(torch.cuda.get_device_name(0))"` → should show RTX 5070 Ti
-- Create project repo: `git init slm-from-scratch`
-
-### Task 1.2: Implement GPT-2 style transformer (nanoGPT)
-- Write `model.py` — ~300 lines
-- Components: `CausalSelfAttention`, `MLP`, `TransformerBlock`, `GPT` class
-- Use `torch.compile()` for free 20-30% speedup
-- Test: forward pass with random input (batch=4, seq_len=1024, vocab=50257, n_layer=6, n_head=6, n_embd=384 → 75M params)
-- Verify: param count with `sum(p.numel() for p in model.parameters())`
-
-### Task 1.3: Train on OpenWebText sample
-- Download OpenWebText sample (1M docs, ~4GB text)
-- Pre-tokenize with GPT-2 tokenizer (for speed, don't train your own tokenizer yet)
-- Train 75M model for 5K steps on 5070 Ti (takes ~2-4 hours)
-- Generate samples every 500 steps — watch gibberish become English
-- **This is the dopamine hit.** You'll see `[PAD][PAD][PAD]The quick brown fox...` and realize you built this.
-
-### Task 1.4: Play with generation
-- Temperature, top-k, top-p sampling
-- Save checkpoints, load them, generate
-
-**Deliverable:** A 75M model that produces coherent-ish English after 5K steps. You've touched every line of a transformer.
+**Key finding:** At 80M tokens, the smaller 50M model outperforms the 77M. More parameters need more data. Phase 3 is where longer runs will show the 77M pulling ahead.
 
 ---
 

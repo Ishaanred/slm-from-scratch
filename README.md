@@ -13,7 +13,7 @@ A hands-on, end-to-end curriculum covering every step of the LLM training pipeli
 | Phase | Status |
 |-------|--------|
 | 1. NanoGPT — build a transformer from scratch | **Complete** |
-| 2. Tokenizer + Data Engineering | Not started |
+| 2. Tokenizer + Data Engineering | **Up next** |
 | 3. Scaling Law Experiments | Not started |
 | 4. Knowledge Distillation | Not started |
 | 5. Evaluation & Feedback Loop | Not started |
@@ -167,3 +167,4 @@ slm-from-scratch/
 - [`docs/phase1/how-transformers-work.html`](docs/phase1/how-transformers-work.html) — visual guide to transformer internals: tokenization, embeddings, attention, the full nanoGPT codebase with interactive diagrams and hover tooltips. Open in a browser.
 - [`docs/phase1/results.md`](docs/phase1/results.md) — Phase 1 results: model configs, val loss, and generated text samples showing progression.
 - [`docs/plan.md`](docs/plan.md) — full 2-month roadmap with task breakdowns.
+- [`docs/phase2/sprint-plan.md`](docs/phase2/sprint-plan.md) — Phase 2 sprint plan: tokenizer training + data filtering.
