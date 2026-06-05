@@ -32,9 +32,9 @@ class TrainConfig:
     block_size: int = 1024
 
     # Model
-    n_layer: int = 6
-    n_head: int = 6
-    n_embd: int = 384
+    n_layer: int = 8
+    n_head: int = 8
+    n_embd: int = 512
     dropout: float = 0.0
 
     # Training

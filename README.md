@@ -155,15 +155,15 @@ slm-from-scratch/
 ├── experiments/          # Scaling law logs and plots — Phase 3
 └── docs/
     ├── plan.md           # Full 2-month roadmap with task breakdowns
-    └── how-transformers-work.html  # Visual explainer — start here
+    └── phase1/
+        ├── how-transformers-work.html  # Visual explainer — start here
+        └── results.md                  # Model configs, val loss, generated output samples
 ```
 
 ---
 
-## Learning Resource
+## Docs
 
-[`docs/how-transformers-work.html`](docs/how-transformers-work.html) — a visual guide to transformer internals built alongside this project. Covers tokenization, embeddings, attention, training, and the full nanoGPT codebase with interactive diagrams and hover tooltips on every code term. Open it in a browser.
-
----
-
-Full task breakdown: [`docs/plan.md`](docs/plan.md)
+- [`docs/phase1/how-transformers-work.html`](docs/phase1/how-transformers-work.html) — visual guide to transformer internals: tokenization, embeddings, attention, the full nanoGPT codebase with interactive diagrams and hover tooltips. Open in a browser.
+- [`docs/phase1/results.md`](docs/phase1/results.md) — Phase 1 results: model configs, val loss, and generated text samples showing progression.
+- [`docs/plan.md`](docs/plan.md) — full 2-month roadmap with task breakdowns.
