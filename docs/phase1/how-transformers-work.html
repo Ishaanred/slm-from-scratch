@@ -625,6 +625,7 @@
     <a class="nav-link" href="#q-context">Context size &amp; KV cache</a>
     <a class="nav-link" href="#q-data">Data gathering &amp; cleaning</a>
     <a class="nav-link" href="#q-finetune-vs-train">Finetune vs train from scratch</a>
+    <a class="nav-link" href="#q-what-is-loss">What does loss mean? <span class="badge qa">Q</span></a>
   </div>
 
   <div class="nav-group">
@@ -1976,6 +1977,45 @@
     <div class="card" style="margin-top:14px;border-color:var(--yellow)">
       <h3 style="color:var(--yellow)">The practical split</h3>
       <p>In industry: almost nobody trains from scratch except frontier labs (OpenAI, Google, Meta, Anthropic, Mistral). Everyone else finetunes. In research: you train from scratch when you want to study the training process itself, scaling laws, or architecture decisions. This project falls squarely in the second category.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="q-what-is-loss">
+    <div class="section-label">Training Concepts</div>
+    <h2>What is loss, and what do the numbers mean?</h2>
+    <p>Loss is not on a scale of 0 to 10. It is unbounded, and only makes sense relative to reference points.</p>
+
+    <p>The model predicts the next token by outputting a probability for every word in its vocabulary (50,257 words for GPT-2 tokenization). Loss measures how wrong those predictions are — specifically, it is <strong>cross-entropy loss</strong>: roughly, how surprised the model was when it saw the actual next word.</p>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0">
+      <div class="card" style="border-color:#ef4444">
+        <h3 style="color:#ef4444;font-size:0.85rem">~10.8</h3>
+        <p style="font-size:0.8rem">Random guessing. Assigning equal probability to all 50,257 tokens gives ln(50257) ≈ 10.8. This is where every model starts.</p>
+      </div>
+      <div class="card" style="border-color:#f97316">
+        <h3 style="color:#f97316;font-size:0.85rem">~5.1</h3>
+        <p style="font-size:0.8rem">50M model, 5K steps, 80M tokens. Real English words and grammar — but sentences don't connect meaningfully across a paragraph.</p>
+      </div>
+      <div class="card" style="border-color:#eab308">
+        <h3 style="color:#eab308;font-size:0.85rem">~3.5</h3>
+        <p style="font-size:0.8rem">GPT-2 small (117M params, properly trained). Coherent paragraphs with some factual errors.</p>
+      </div>
+      <div class="card" style="border-color:#22c55e">
+        <h3 style="color:#22c55e;font-size:0.85rem">~1.5–2.5</h3>
+        <p style="font-size:0.8rem">SOTA models (LLaMA, GPT-4, Claude). Hard to distinguish from human writing at a glance.</p>
+      </div>
+    </div>
+
+    <p>A loss of 1.0 would mean the model narrows down the next word to about 3 plausible options on average — essentially reading the writer's mind. Open-ended natural language generation never reaches this. Sub-1 loss only appears in highly constrained tasks (e.g., predicting the next byte in a compressed file).</p>
+
+    <h3 style="font-size:0.95rem;color:#f1f5f9;margin-top:24px;margin-bottom:10px">Why loss drops fast at first then slows</h3>
+    <p>Early in training, the model learns obvious things: spaces come after words, capital letters follow periods, "the" is extremely common. These easy patterns produce fast loss drops. Later improvements require understanding context, facts, and reasoning — much harder to compress into weights, so each additional drop costs exponentially more compute.</p>
+
+    <div class="card" style="margin-top:14px;border-color:var(--yellow)">
+      <h3 style="color:var(--yellow)">Loss vs perplexity</h3>
+      <p>Perplexity is just e<sup>loss</sup>. A loss of 5.1 = perplexity of ~164, meaning the model is as confused as if it had to choose uniformly from 164 options at each step. A loss of 2.3 = perplexity of 10, meaning it narrows it to about 10 plausible next words. Most papers report perplexity; training logs report loss. They carry the same information.</p>
     </div>
   </div>
 
