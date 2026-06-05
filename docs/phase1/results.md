@@ -54,10 +54,28 @@ Real English words, grammatically plausible sentences — but no coherent meanin
 **Config:** 8 layers, 8 heads, 512 embedding dim  
 **Steps:** 5,000  
 **Tokens seen:** ~80M  
-**Val loss:** _in progress_  
-**Time:** _in progress_  
+**Val loss:** 5.24  
+**Time:** ~20 min on RTX 5070 Ti  
 
-Sample output: _coming soon_
+**Sample output** (`--prompt "The meaning of life is"`):
+
+```
+The meaning of life is the first ever-to-to-mused of self-lab and the first time period of time.
+The difference between these systems, and even the potential difference to be an example of these two seasons.
+
+The reason it might be, but the first time that it's very well worth noting that we can build up a
+new one as a result of the whole way we're talking about, but what we need to be in a pretty much
+more successful approach than the last time, and the current performance, and the next one.
+
+After every single reason were true, we haven't seen enough time doing it just in the game. It was
+just the most important that we had to find the first thing, but because we are going to be sure we
+are not going to get the game to the new roster.
+
+That was the only way we haven't made the second time off of the season, and we don't think it's
+the biggest difference.
+```
+
+**Why 77M is worse than 50M here:** more parameters need more data. Both models saw 80M tokens — the 77M is more undertrained relative to its size. By Chinchilla, a 77M model needs ~1.5B tokens to match a properly-trained 50M. Same token count, smaller model wins. This will reverse once we run longer training in Phase 3.
 
 ---
 

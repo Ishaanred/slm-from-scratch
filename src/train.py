@@ -38,8 +38,8 @@ class TrainConfig:
     dropout: float = 0.0
 
     # Training
-    batch_size: int = 16
-    gradient_accumulation_steps: int = 4  # effective batch = batch_size * grad_accum
+    batch_size: int = 8
+    gradient_accumulation_steps: int = 8  # effective batch = batch_size * grad_accum
     max_iters: int = 5000
     eval_interval: int = 500
     eval_iters: int = 200
