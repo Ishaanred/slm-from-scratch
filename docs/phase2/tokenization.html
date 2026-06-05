@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tokenization and BPE — LLM Internals</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --sidebar: #161b22;
+    --card: #1c2128;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --muted: #8b949e;
+    --blue: #58a6ff;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --purple: #bc8cff;
+    --red: #f85149;
+    --orange: #ffa657;
+    --sidebar-w: 240px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 15px; line-height: 1.7; display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  nav { width: var(--sidebar-w); background: var(--sidebar); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; padding: 24px 0; }
+  .nav-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+  .nav-logo .title { font-size: 0.8rem; font-weight: 700; color: var(--blue); letter-spacing: 0.05em; text-transform: uppercase; }
+  .nav-logo .sub { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+  .nav-section { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 12px 20px 4px; }
+  .nav-link { display: block; padding: 5px 20px; font-size: 0.82rem; color: var(--muted); text-decoration: none; border-left: 2px solid transparent; transition: all 0.15s; }
+  .nav-link:hover, .nav-link.active { color: var(--text); border-left-color: var(--blue); background: rgba(88,166,255,0.06); }
+  .badge { font-size: 0.6rem; padding: 1px 5px; border-radius: 3px; margin-left: 5px; font-weight: 700; vertical-align: middle; }
+  .badge.qa { background: rgba(188,140,255,0.2); color: var(--purple); }
+
+  /* Main */
+  main { margin-left: var(--sidebar-w); padding: 48px 56px; max-width: 860px; width: 100%; }
+  .section { margin-bottom: 8px; padding: 40px 0; }
+  .section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 10px; }
+  h1 { font-size: 2rem; font-weight: 700; color: #f0f6fc; margin-bottom: 12px; line-height: 1.3; }
+  h2 { font-size: 1.4rem; font-weight: 700; color: #f0f6fc; margin-bottom: 14px; }
+  h3 { font-size: 1rem; font-weight: 600; color: #f0f6fc; margin-bottom: 8px; }
+  p { color: var(--text); margin-bottom: 14px; }
+  strong { color: #f0f6fc; }
+  hr.divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+  code { background: rgba(255,255,255,0.07); padding: 1px 5px; border-radius: 4px; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.85em; color: var(--orange); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; margin-bottom: 10px; }
+  .card h3 { color: var(--blue); font-size: 0.9rem; margin-bottom: 6px; }
+  .card p { font-size: 0.85rem; color: var(--muted); margin: 0; }
+
+  /* Token visualizer */
+  .token-display { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0; font-family: monospace; font-size: 0.9rem; }
+  .tok { padding: 3px 8px; border-radius: 4px; border: 1px solid; }
+  .tok-a { background: rgba(88,166,255,0.15); border-color: rgba(88,166,255,0.4); color: #93c5fd; }
+  .tok-b { background: rgba(63,185,80,0.15); border-color: rgba(63,185,80,0.4); color: #86efac; }
+  .tok-c { background: rgba(188,140,255,0.15); border-color: rgba(188,140,255,0.4); color: #c4b5fd; }
+  .tok-d { background: rgba(255,166,87,0.15); border-color: rgba(255,166,87,0.4); color: #fdba74; }
+  .tok-e { background: rgba(248,81,73,0.15); border-color: rgba(248,81,73,0.4); color: #fca5a5; }
+  .tok-space { opacity: 0.4; }
+
+  /* BPE step animation */
+  .bpe-step { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin: 10px 0; }
+  .bpe-step .step-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
+  .bpe-step .merge-highlight { background: rgba(210,153,34,0.25); border: 1px solid var(--yellow); border-radius: 4px; padding: 2px 6px; color: var(--yellow); font-family: monospace; }
+  .bpe-step .result { font-family: monospace; font-size: 0.95rem; margin-top: 8px; }
+  .arrow { color: var(--muted); margin: 0 6px; }
+
+  /* Comparison table */
+  .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.85rem; }
+  .compare-table th { background: var(--card); color: var(--muted); font-weight: 600; text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .compare-table td { padding: 10px 14px; border-bottom: 1px solid rgba(48,54,61,0.5); vertical-align: top; }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .good { color: var(--green); }
+  .bad { color: var(--red); }
+  .mid { color: var(--yellow); }
+
+  /* Vocab size visual */
+  .vocab-bar-container { margin: 16px 0; }
+  .vocab-bar-row { display: flex; align-items: center; gap: 12px; margin: 8px 0; font-size: 0.83rem; }
+  .vocab-bar-label { width: 80px; color: var(--muted); text-align: right; flex-shrink: 0; }
+  .vocab-bar { height: 22px; border-radius: 4px; display: flex; align-items: center; padding: 0 10px; font-size: 0.75rem; font-weight: 600; transition: width 0.3s; }
+  .vocab-bar-note { color: var(--muted); font-size: 0.78rem; }
+
+  /* Spoiler */
+  .spoiler-toggle { cursor: pointer; color: var(--muted); font-size: 0.8rem; border: 1px solid var(--border); border-radius: 4px; padding: 3px 10px; display: inline-block; margin: 10px 0; user-select: none; }
+  .spoiler-toggle:hover { color: var(--text); }
+  .spoiler-content { display: none; background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin-top: 6px; font-size: 0.88rem; }
+  .spoiler-content.open { display: block; }
+
+  /* Code block */
+  .code-block { background: #161b22; border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; overflow-x: auto; margin: 14px 0; line-height: 1.6; }
+  .kw { color: #ff7b72; }
+  .fn { color: #d2a8ff; }
+  .st { color: #a5d6ff; }
+  .cm { color: #8b949e; font-style: italic; }
+  .num { color: #79c0ff; }
+
+  /* Tooltip */
+  .tip { border-bottom: 1px dashed var(--muted); cursor: help; }
+  #tipbox { position: fixed; background: #21262d; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 0.78rem; color: var(--text); max-width: 260px; pointer-events: none; opacity: 0; transition: opacity 0.1s; z-index: 999; line-height: 1.5; }
+
+  /* Landing cards */
+  .landing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 24px 0; }
+  .landing-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 18px; }
+  .landing-card .icon { font-size: 1.4rem; margin-bottom: 8px; }
+  .landing-card h3 { font-size: 0.9rem; color: #f0f6fc; margin-bottom: 6px; }
+  .landing-card p { font-size: 0.8rem; color: var(--muted); margin: 0; }
+
+  /* Step flow */
+  .step-flow { display: flex; align-items: flex-start; gap: 0; margin: 20px 0; flex-wrap: wrap; }
+  .step-box { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; flex: 1; min-width: 120px; text-align: center; }
+  .step-box .step-num { font-size: 0.65rem; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .step-box .step-name { font-size: 0.85rem; font-weight: 600; color: #f0f6fc; }
+  .step-box .step-desc { font-size: 0.73rem; color: var(--muted); margin-top: 4px; }
+  .step-arrow { color: var(--muted); padding: 0 8px; align-self: center; font-size: 1.1rem; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <div class="title">LLM Internals</div>
+    <div class="sub">Phase 2 — Tokenization</div>
+  </div>
+
+  <div class="nav-section">Overview</div>
+  <a class="nav-link" href="#what-is-tokenization">What is tokenization</a>
+  <a class="nav-link" href="#why-not-characters">Why not just use characters</a>
+  <a class="nav-link" href="#why-not-words">Why not just use words</a>
+
+  <div class="nav-section">BPE</div>
+  <a class="nav-link" href="#bpe-intro">How BPE works</a>
+  <a class="nav-link" href="#bpe-step-by-step">Step by step example</a>
+  <a class="nav-link" href="#vocab-size">Vocabulary size tradeoffs</a>
+  <a class="nav-link" href="#special-tokens">Special tokens</a>
+  <a class="nav-link" href="#byte-level">Byte-level BPE</a>
+
+  <div class="nav-section">In Practice</div>
+  <a class="nav-link" href="#compression">Compression ratio</a>
+  <a class="nav-link" href="#tokenizers-lib">HF tokenizers library</a>
+
+  <div class="nav-section">Q&A</div>
+  <a class="nav-link" href="#q-same-word">Why does "king" tokenize differently than "King"? <span class="badge qa">Q</span></a>
+  <a class="nav-link" href="#q-numbers">Why are numbers and dates so weird? <span class="badge qa">Q</span></a>
+  <a class="nav-link" href="#q-languages">Why do non-English languages use more tokens? <span class="badge qa">Q</span></a>
+</nav>
+
+<main>
+  <div id="tipbox"></div>
+
+  <!-- LANDING -->
+  <div class="section" id="landing">
+    <div class="section-label">Phase 2 — Tokenization</div>
+    <h1>Tokenization and BPE</h1>
+    <p>Before a language model sees any text, that text has to be converted into numbers. Tokenization is that conversion. It turns a string of characters into a sequence of integer IDs the model can process.</p>
+    <p>This page explains how that works, why the naive approaches fail, and how BPE (byte-pair encoding) solves both problems at once.</p>
+
+    <div class="landing-grid">
+      <div class="landing-card">
+        <div class="icon">🔢</div>
+        <h3>What you will understand</h3>
+        <p>Why models can't read raw text, what BPE does step by step, and how vocabulary size affects training.</p>
+      </div>
+      <div class="landing-card">
+        <div class="icon">⚙️</div>
+        <h3>What you will build</h3>
+        <p>A BPE tokenizer trained on your own corpus using HuggingFace tokenizers. Your model will use it instead of GPT-2's tokenizer.</p>
+      </div>
+      <div class="landing-card">
+        <div class="icon">📐</div>
+        <h3>Why it matters</h3>
+        <p>A better tokenizer compresses text more efficiently — fewer tokens per idea means more context fits in the same sequence length.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- WHAT IS TOKENIZATION -->
+  <div class="section" id="what-is-tokenization">
+    <div class="section-label">The Problem</div>
+    <h2>What is tokenization</h2>
+    <p>A transformer model operates on sequences of integers. It cannot read the string <code>"hello world"</code> directly. Every piece of text needs to be mapped to a list of integer IDs before training or inference can happen.</p>
+
+    <p>Tokenization is the step that does that mapping:</p>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:18px;margin:16px 0;font-family:monospace;font-size:0.9rem">
+      <div style="color:var(--muted);font-size:0.75rem;margin-bottom:8px">TEXT</div>
+      <div style="color:#f0f6fc;margin-bottom:14px">"The cat sat on the mat"</div>
+      <div style="color:var(--muted);font-size:0.75rem;margin-bottom:8px">TOKENS</div>
+      <div class="token-display">
+        <span class="tok tok-a">The</span>
+        <span class="tok tok-b">cat</span>
+        <span class="tok tok-c">sat</span>
+        <span class="tok tok-d">on</span>
+        <span class="tok tok-a">the</span>
+        <span class="tok tok-b">mat</span>
+      </div>
+      <div style="color:var(--muted);font-size:0.75rem;margin:14px 0 8px">TOKEN IDs</div>
+      <div style="color:var(--green)">[ 464, 3797, 3332, 319, 262, 2603 ]</div>
+    </div>
+
+    <p>The model only ever sees the integer list. The embeddings table converts each integer into a vector. The model never processes raw characters.</p>
+
+    <p>The vocabulary is the set of all possible tokens. Every token has an ID (its index in the vocabulary). The tokenizer is the function that splits text into tokens and returns their IDs.</p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- WHY NOT CHARACTERS -->
+  <div class="section" id="why-not-characters">
+    <div class="section-label">The Naive Approaches</div>
+    <h2>Why not just use characters</h2>
+    <p>The simplest possible tokenizer would split every character into its own token. <code>"hello"</code> becomes <code>[h, e, l, l, o]</code>.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0">
+      <div class="card" style="border-color:var(--green)">
+        <h3 style="color:var(--green)">What works</h3>
+        <p>Vocabulary is tiny — just the 256 ASCII characters or ~130K Unicode points. Every word is representable, even ones you never saw in training.</p>
+      </div>
+      <div class="card" style="border-color:var(--red)">
+        <h3 style="color:var(--red)">What breaks</h3>
+        <p>Sequences get extremely long. "The cat sat" becomes 11 tokens instead of 3. The model's context window fills up faster, and learning word-level meaning from individual characters is very hard.</p>
+      </div>
+    </div>
+
+    <p>Concretely: GPT-2 has a 1024 token context window. At the character level, that fits about 200 words — barely two paragraphs. At the word/subword level, it fits about 700 words. The character model sees 3x less text per forward pass.</p>
+
+    <p>There is also a deeper problem. The model needs to learn that <code>c</code> + <code>a</code> + <code>t</code> means cat, that <code>c</code> + <code>a</code> + <code>t</code> + <code>s</code> means multiple cats, and so on — entirely from attention patterns across characters. This is possible but wastes a lot of capacity on structure that could be captured at the token level.</p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- WHY NOT WORDS -->
+  <div class="section" id="why-not-words">
+    <h2>Why not just use words</h2>
+    <p>The other naive approach: split on whitespace. Each word is one token. <code>"the cat sat"</code> becomes <code>[the, cat, sat]</code>.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0">
+      <div class="card" style="border-color:var(--green)">
+        <h3 style="color:var(--green)">What works</h3>
+        <p>Sequences are short. Each token carries semantic meaning. Easy to understand what each ID represents.</p>
+      </div>
+      <div class="card" style="border-color:var(--red)">
+        <h3 style="color:var(--red)">What breaks</h3>
+        <p>Vocabulary explodes. English alone has 500K+ words. Add names, technical terms, URLs, code, misspellings — you easily need millions of entries. Out-of-vocabulary words (anything not seen in training) get mapped to a single UNK token, destroying information.</p>
+      </div>
+    </div>
+
+    <p>The out-of-vocabulary problem is fatal. If someone writes "ChatGPT" and your tokenizer never saw it, it becomes <code>[UNK]</code>. The model has no idea what it means. Word-level tokenizers also treat <code>run</code>, <code>runs</code>, <code>running</code>, <code>runner</code> as four completely unrelated tokens, even though they share a root and meaning.</p>
+
+    <div class="card" style="border-color:var(--yellow)">
+      <h3 style="color:var(--yellow)">The tradeoff</h3>
+      <p>Characters: tiny vocab, very long sequences, hard to learn meaning. Words: short sequences, vocabulary explosion, out-of-vocab failure. You want something in between.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- BPE INTRO -->
+  <div class="section" id="bpe-intro">
+    <div class="section-label">The Solution</div>
+    <h2>How BPE works</h2>
+    <p>BPE stands for byte-pair encoding. The name comes from a data compression algorithm from the 1990s. The core idea: start with individual characters, then repeatedly merge the most common adjacent pair into a single new token.</p>
+
+    <p>Think of it like learning shorthand. You start by writing every letter separately. Then you notice you always write "th" together, so you invent a symbol for it. Then you notice "the" is common, so you invent a symbol for that. You keep going until your shorthand system has the right number of symbols for the vocabulary size you want.</p>
+
+    <div class="step-flow">
+      <div class="step-box">
+        <div class="step-num">Start</div>
+        <div class="step-name">Characters</div>
+        <div class="step-desc">Every character is its own token</div>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step-box">
+        <div class="step-num">Repeat</div>
+        <div class="step-name">Find pair</div>
+        <div class="step-desc">Most frequent adjacent pair in corpus</div>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step-box">
+        <div class="step-num">Repeat</div>
+        <div class="step-name">Merge</div>
+        <div class="step-desc">Replace every occurrence with new token</div>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step-box">
+        <div class="step-num">Stop</div>
+        <div class="step-name">Vocab size</div>
+        <div class="step-desc">When you hit your target vocabulary size</div>
+      </div>
+    </div>
+
+    <p>The vocabulary size is a hyperparameter you choose before training the tokenizer. Common values: 8K (small, aggressive compression), 32K (GPT-2, balanced), 50K (GPT-2 actual), 100K+ (modern models like LLaMA 3).</p>
+
+    <p>The result is a vocabulary of subword tokens — fragments that are smaller than words but larger than characters. Common words get their own token. Rare words get split into recognizable pieces. Nothing becomes UNK.</p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- STEP BY STEP -->
+  <div class="section" id="bpe-step-by-step">
+    <div class="section-label">BPE</div>
+    <h2>Step by step example</h2>
+    <p>Let's train a tiny BPE tokenizer on one sentence: <strong>"low lower lowest"</strong>. In a real tokenizer you'd use gigabytes of text — the algorithm is identical, just larger.</p>
+
+    <div class="bpe-step">
+      <div class="step-label">Initial state — every character is a token, words end with a special end marker</div>
+      <div class="result">
+        l o w &lt;/w&gt; &nbsp;|&nbsp; l o w e r &lt;/w&gt; &nbsp;|&nbsp; l o w e s t &lt;/w&gt;
+      </div>
+    </div>
+
+    <div class="bpe-step">
+      <div class="step-label">Count all adjacent pairs across the corpus</div>
+      <div class="result" style="color:var(--muted);font-size:0.85rem">
+        (l,o): 3 times &nbsp;|&nbsp; (o,w): 3 times &nbsp;|&nbsp; (w,&lt;/w&gt;): 1 time &nbsp;|&nbsp; (w,e): 2 times &nbsp;|&nbsp; (e,r): 1 time &nbsp;|&nbsp; (e,s): 1 time ...
+      </div>
+    </div>
+
+    <div class="bpe-step">
+      <div class="step-label">Merge #1 — most common pair is (l, o) with 3 occurrences</div>
+      <div class="result">
+        <span class="merge-highlight">lo</span> w &lt;/w&gt; &nbsp;|&nbsp; <span class="merge-highlight">lo</span> w e r &lt;/w&gt; &nbsp;|&nbsp; <span class="merge-highlight">lo</span> w e s t &lt;/w&gt;
+      </div>
+    </div>
+
+    <div class="bpe-step">
+      <div class="step-label">Merge #2 — now (lo, w) is most common with 3 occurrences</div>
+      <div class="result">
+        <span class="merge-highlight">low</span> &lt;/w&gt; &nbsp;|&nbsp; <span class="merge-highlight">low</span> e r &lt;/w&gt; &nbsp;|&nbsp; <span class="merge-highlight">low</span> e s t &lt;/w&gt;
+      </div>
+    </div>
+
+    <div class="bpe-step">
+      <div class="step-label">Merge #3 — (low, &lt;/w&gt;) and (w, e) both have 2 occurrences, pick one</div>
+      <div class="result">
+        low&lt;/w&gt; &nbsp;|&nbsp; low <span class="merge-highlight">er</span> &lt;/w&gt; &nbsp;|&nbsp; low e s t &lt;/w&gt;
+      </div>
+    </div>
+
+    <p style="margin-top:16px">After enough merges you end up with tokens like <code>low</code>, <code>lower</code>, <code>er</code>, <code>est</code>. Common complete words get their own token. Rare words are split into pieces that appear in many other words — so the model still has some signal about what they mean.</p>
+
+    <div class="card" style="margin-top:10px">
+      <h3>The merge list is the tokenizer</h3>
+      <p>When you train a BPE tokenizer, you produce a list of merge rules in the order they were learned. At inference time, to tokenize new text, you apply those same merges in the same order. The tokenizer is deterministic — the same string always produces the same token IDs.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- VOCAB SIZE -->
+  <div class="section" id="vocab-size">
+    <div class="section-label">BPE</div>
+    <h2>Vocabulary size tradeoffs</h2>
+    <p>The number of merges you do determines your vocabulary size. Each merge adds one new token. If you start with 256 byte tokens and do 31,744 merges, you end up with a 32K vocabulary.</p>
+
+    <div class="vocab-bar-container">
+      <div class="vocab-bar-row">
+        <div class="vocab-bar-label">8K</div>
+        <div class="vocab-bar" style="width:30%;background:rgba(88,166,255,0.2);border:1px solid rgba(88,166,255,0.4);color:var(--blue)">aggressive</div>
+        <div class="vocab-bar-note">Short token IDs, long sequences, good for small models</div>
+      </div>
+      <div class="vocab-bar-row">
+        <div class="vocab-bar-label">32K</div>
+        <div class="vocab-bar" style="width:55%;background:rgba(63,185,80,0.2);border:1px solid rgba(63,185,80,0.4);color:var(--green)">balanced</div>
+        <div class="vocab-bar-note">GPT-2 range — good default for English</div>
+      </div>
+      <div class="vocab-bar-row">
+        <div class="vocab-bar-label">50K</div>
+        <div class="vocab-bar" style="width:70%;background:rgba(210,153,34,0.2);border:1px solid rgba(210,153,34,0.4);color:var(--yellow)">standard</div>
+        <div class="vocab-bar-note">GPT-2 actual (50,257). Works well.</div>
+      </div>
+      <div class="vocab-bar-row">
+        <div class="vocab-bar-label">128K</div>
+        <div class="vocab-bar" style="width:90%;background:rgba(188,140,255,0.2);border:1px solid rgba(188,140,255,0.4);color:var(--purple)">large</div>
+        <div class="vocab-bar-note">LLaMA 3, GPT-4 range. Better for multilingual and code.</div>
+      </div>
+    </div>
+
+    <table class="compare-table" style="margin-top:20px">
+      <tr>
+        <th>Vocab size</th>
+        <th>Sequence length</th>
+        <th>Embedding table</th>
+        <th>Best for</th>
+      </tr>
+      <tr>
+        <td>8K</td>
+        <td class="bad">Longer (more tokens per word)</td>
+        <td class="good">Small</td>
+        <td>Small models, constrained vocab</td>
+      </tr>
+      <tr>
+        <td>32K</td>
+        <td class="good">Balanced</td>
+        <td class="mid">Medium</td>
+        <td>English-focused models, this project</td>
+      </tr>
+      <tr>
+        <td>128K</td>
+        <td class="good">Shorter (fewer tokens per word)</td>
+        <td class="bad">Large (~500MB at 1024 dims)</td>
+        <td>Multilingual, code, production models</td>
+      </tr>
+    </table>
+
+    <p>For this project, 16K or 32K is the right range — big enough to handle common English well, small enough that the embedding table doesn't eat VRAM.</p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SPECIAL TOKENS -->
+  <div class="section" id="special-tokens">
+    <div class="section-label">BPE</div>
+    <h2>Special tokens</h2>
+    <p>Every tokenizer has a handful of tokens that aren't text — they carry structural meaning. You define these before training and they get reserved IDs.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0">
+      <div class="card">
+        <h3><code>&lt;|endoftext|&gt;</code></h3>
+        <p>Marks the boundary between documents. Without this, the model doesn't know where one article ends and the next begins. You saw this in your Phase 1 output — the model generated it mid-sequence when it "decided" to start a new document.</p>
+      </div>
+      <div class="card">
+        <h3><code>&lt;|pad|&gt;</code></h3>
+        <p>Padding token. When batching sequences of different lengths, shorter ones get padded to match the longest. The model should ignore these positions — handled via attention masking.</p>
+      </div>
+      <div class="card">
+        <h3><code>&lt;|bos|&gt;</code> / <code>&lt;|eos|&gt;</code></h3>
+        <p>Beginning/end of sequence. Some models use these instead of endoftext. Marks where generation should start and stop.</p>
+      </div>
+      <div class="card">
+        <h3><code>&lt;|unk|&gt;</code></h3>
+        <p>Unknown token. With byte-level BPE (below) this should never appear — every possible byte sequence is representable. Still included for compatibility.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- BYTE LEVEL -->
+  <div class="section" id="byte-level">
+    <div class="section-label">BPE</div>
+    <h2>Byte-level BPE</h2>
+    <p>Standard BPE starts from characters. Byte-level BPE starts from raw bytes instead. Every possible byte value (0–255) is a starting token.</p>
+
+    <p>Why bytes instead of characters? Because characters are ambiguous. Unicode has over 140,000 characters. Some are rare enough that a character-level vocabulary would either omit them (forcing UNK) or bloat the starting vocabulary unnecessarily. Bytes sidestep this entirely — every possible input, in any language, in any encoding, is representable as a sequence of bytes. There is no UNK.</p>
+
+    <div class="card" style="border-color:var(--blue)">
+      <h3 style="color:var(--blue)">This is what GPT-2 and most modern tokenizers use</h3>
+      <p>Byte-level BPE means the tokenizer can handle any Unicode text, code, emoji, URLs, and arbitrary bytes without ever producing an unknown token. The HuggingFace <code>ByteLevelBPETokenizer</code> implements this.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- COMPRESSION -->
+  <div class="section" id="compression">
+    <div class="section-label">In Practice</div>
+    <h2>Compression ratio</h2>
+    <p>The key metric for a tokenizer is how many tokens it produces per 1000 characters of text. Fewer tokens = more efficient = more text fits in the context window = cheaper training.</p>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:18px;margin:16px 0">
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:10px">Same sentence through different tokenizers:</p>
+      <p style="font-family:monospace;font-size:0.88rem;color:#f0f6fc;margin-bottom:14px">"The quick brown fox jumps over the lazy dog."</p>
+
+      <div style="margin-bottom:10px">
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">Character-level (45 tokens)</div>
+        <div class="token-display" style="font-size:0.75rem">
+          <span class="tok tok-e">T</span><span class="tok tok-e">h</span><span class="tok tok-e">e</span><span class="tok tok-e"> </span><span class="tok tok-a">q</span><span class="tok tok-a">u</span><span class="tok tok-a">i</span><span class="tok tok-a">c</span><span class="tok tok-a">k</span><span class="tok tok-b"> </span><span class="tok tok-b">b</span><span class="tok tok-b">r</span><span class="tok tok-b">o</span><span class="tok tok-b">w</span><span class="tok tok-b">n</span><span style="color:var(--muted);font-size:0.7rem;align-self:center">... 30 more</span>
+        </div>
+      </div>
+
+      <div style="margin-bottom:10px">
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">GPT-2 tokenizer (10 tokens)</div>
+        <div class="token-display">
+          <span class="tok tok-a">The</span><span class="tok tok-b">quick</span><span class="tok tok-c">brown</span><span class="tok tok-d">fox</span><span class="tok tok-a">jumps</span><span class="tok tok-b">over</span><span class="tok tok-c">the</span><span class="tok tok-d">lazy</span><span class="tok tok-a">dog</span><span class="tok tok-b">.</span>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">Well-trained 32K tokenizer (~8 tokens)</div>
+        <div class="token-display">
+          <span class="tok tok-a">The</span><span class="tok tok-b">quick</span><span class="tok tok-c">brown</span><span class="tok tok-d">fox</span><span class="tok tok-a">jumps</span><span class="tok tok-b">over</span><span class="tok tok-c">the</span><span class="tok tok-d">lazy dog.</span>
+        </div>
+      </div>
+    </div>
+
+    <p>When you train your tokenizer, calculate its compression ratio on a held-out text sample and compare it to GPT-2. If yours is lower (fewer tokens for the same text), it is encoding information more efficiently.</p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- HF TOKENIZERS -->
+  <div class="section" id="tokenizers-lib">
+    <div class="section-label">In Practice</div>
+    <h2>HuggingFace tokenizers library</h2>
+    <p>The <code>tokenizers</code> library is written in Rust and wrapped in Python. Training a tokenizer that would take hours in pure Python takes minutes here. It is what GPT-2, LLaMA, and most production tokenizers were built with.</p>
+
+    <p>The key components:</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0">
+      <div class="card">
+        <h3><code>ByteLevelBPETokenizer</code></h3>
+        <p>Handles the byte-level BPE algorithm. You pass it a corpus, a vocab size, and it does all the merges and produces the tokenizer files.</p>
+      </div>
+      <div class="card">
+        <h3><code>BpeTrainer</code></h3>
+        <p>Lower-level trainer if you want more control — custom special tokens, minimum frequency cutoffs, or a different initial alphabet.</p>
+      </div>
+      <div class="card">
+        <h3><code>vocab.json</code></h3>
+        <p>The vocabulary: a mapping from token string to integer ID. This is what gets loaded at inference time.</p>
+      </div>
+      <div class="card">
+        <h3><code>merges.txt</code></h3>
+        <p>The merge rules in the order they were learned. To tokenize new text, apply these merges in order from top to bottom.</p>
+      </div>
+    </div>
+
+    <p>Once trained, you load it with <code>tokenizers.Tokenizer.from_file()</code> or wrap it in a HuggingFace <code>PreTrainedTokenizerFast</code> to get the full HF interface.</p>
+
+    <div class="spoiler-toggle" onclick="this.nextElementSibling.classList.toggle('open')">∑ Training API sketch</div>
+    <div class="spoiler-content">
+      <div class="code-block">
+<span class="kw">from</span> tokenizers <span class="kw">import</span> ByteLevelBPETokenizer
+
+tokenizer = ByteLevelBPETokenizer()
+
+tokenizer.train(
+    files=[<span class="st">"data/corpus.txt"</span>],
+    vocab_size=<span class="num">32_000</span>,
+    min_frequency=<span class="num">2</span>,
+    special_tokens=[<span class="st">"&lt;|endoftext|&gt;"</span>, <span class="st">"&lt;|pad|&gt;"</span>]
+)
+
+tokenizer.save_model(<span class="st">"src/tokenizer_/"</span>)
+<span class="cm"># saves vocab.json and merges.txt</span>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Q&A: SAME WORD -->
+  <div class="section" id="q-same-word">
+    <div class="section-label">Q&A</div>
+    <h2>Why does "king" tokenize differently than "King"? <span class="badge qa">Q</span></h2>
+    <p>BPE is case-sensitive by default. <code>king</code> and <code>King</code> are different byte sequences, so they can end up as different tokens — or one might get split while the other doesn't, depending on how frequently each appeared during tokenizer training.</p>
+
+    <p>This is also why some models are case-sensitive in ways that feel arbitrary. If <code>King</code> appears less often in the training corpus than <code>king</code>, it might not have earned its own merge and gets split into <code>K</code> + <code>ing</code> while <code>king</code> stays as one token.</p>
+
+    <div class="card" style="border-color:var(--yellow)">
+      <h3 style="color:var(--yellow)">The downstream effect</h3>
+      <p>Because "King" and "king" are different token IDs, the model has to learn separately that they refer to the same concept. This is one reason why training on lowercased text can sometimes improve performance for small models — it reduces the vocabulary duplication. Modern large models have enough capacity to handle it without preprocessing.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Q&A: NUMBERS -->
+  <div class="section" id="q-numbers">
+    <div class="section-label">Q&A</div>
+    <h2>Why are numbers and dates so weird? <span class="badge qa">Q</span></h2>
+    <p>Try tokenizing <code>1234567</code> with GPT-2. You might get <code>[12, 345, 67]</code> or <code>[1, 234, 567]</code> or something else entirely depending on how those digit sequences happened to appear in the training corpus.</p>
+
+    <p>Numbers are a known weakness of BPE. Because BPE merges based on frequency, common number patterns (years like 1990, 2023; round numbers like 1000) get their own tokens, while arbitrary numbers get split unpredictably. The model then has to do arithmetic across token boundaries that don't respect place value — a very hard thing to learn.</p>
+
+    <p>This is one reason LLMs are bad at arithmetic. It is not fundamentally a model size problem — it is a tokenization problem. Dedicated number tokenizers (e.g., always split each digit individually) help, but most general-purpose tokenizers don't bother.</p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Q&A: LANGUAGES -->
+  <div class="section" id="q-languages">
+    <div class="section-label">Q&A</div>
+    <h2>Why do non-English languages use more tokens? <span class="badge qa">Q</span></h2>
+    <p>If a tokenizer is trained mostly on English text, the merge rules reflect English frequency patterns. Common English words and subwords get merged into single tokens. Non-English words — which appear far less often in the corpus — don't accumulate enough frequency to earn merges, so they get split into smaller and smaller pieces.</p>
+
+    <p>In extreme cases, languages with non-Latin scripts (Arabic, Chinese, Korean, Thai) can produce 5-10x more tokens than English for text that carries the same amount of information. This makes those languages effectively more expensive to process — the model spends more of its context window on the same content.</p>
+
+    <p>The fix is to include more of those languages in the tokenizer training corpus, so their patterns earn their own merges. LLaMA 3's 128K vocabulary was partly motivated by improving multilingual tokenization efficiency.</p>
+
+    <div class="card" style="border-color:var(--blue)">
+      <h3 style="color:var(--blue)">For this project</h3>
+      <p>OpenWebText is English-dominated, so your tokenizer will be English-efficient. That is fine for the current goal. If you wanted multilingual capability later, you would need to add multilingual data to the tokenizer training corpus.</p>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // Scroll-based active nav link
+  const sections = document.querySelectorAll('.section[id]');
+  const links = document.querySelectorAll('.nav-link');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => obs.observe(s));
+
+  // Hover tooltips
+  const tipEl = document.getElementById('tipbox');
+  document.querySelectorAll('[data-tip]').forEach(el => {
+    el.addEventListener('mouseenter', () => { tipEl.textContent = el.dataset.tip; tipEl.style.opacity = '1'; });
+    el.addEventListener('mousemove', e => {
+      tipEl.style.left = Math.min(e.clientX + 14, window.innerWidth - 278) + 'px';
+      tipEl.style.top = Math.max(e.clientY - 48, 8) + 'px';
+    });
+    el.addEventListener('mouseleave', () => { tipEl.style.opacity = '0'; });
+  });
+</script>
+
+</body>
+</html>
