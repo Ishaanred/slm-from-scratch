@@ -168,3 +168,4 @@ slm-from-scratch/
 - [`docs/phase1/results.md`](docs/phase1/results.md) — Phase 1 results: model configs, val loss, and generated text samples showing progression.
 - [`docs/plan.md`](docs/plan.md) — full 2-month roadmap with task breakdowns.
 - [`docs/phase2/sprint-plan.md`](docs/phase2/sprint-plan.md) — Phase 2 sprint plan: tokenizer training + data filtering.
+- [`docs/phase2/tokenization.html`](docs/phase2/tokenization.html) — full Phase 2 explainer: why Phase 2 differs from Phase 1, BPE step by step, vocab size tradeoffs, byte-level tokenization, compression ratio, the HF tokenizers library, data quality, and the filtering pipeline.
