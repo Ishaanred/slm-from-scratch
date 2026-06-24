@@ -36,6 +36,7 @@
     line-height: 1.7;
     display: flex;
     min-height: 100vh;
+    padding-left: var(--sidebar-w);
   }
 
   /* SIDEBAR */
@@ -118,12 +119,38 @@
     flex-shrink: 0;
   }
 
+  /* sidebar scrollbar (match Phase 1) */
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+  /* PHASE SWITCHER (dropdown) */
+  .phase-dd { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px; }
+  .phase-dd > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 9px; padding: 8px 20px; font-size: 0.8rem; font-weight: 700; color: var(--accent-soft); }
+  .phase-dd > summary::-webkit-details-marker { display: none; }
+  .phase-dd > summary .chev { margin-left: auto; color: var(--dim); font-size: 0.65rem; transition: transform 0.15s; }
+  .phase-dd[open] > summary .chev { transform: rotate(90deg); }
+  .phase-dd-body { padding-top: 4px; }
+  .pnum { display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px; border-radius: 5px; background: #1e293b; color: var(--dim); font-size: 0.68rem; font-weight: 700; flex-shrink: 0; }
+  .phase-dd > summary .pnum { background: #312e81; color: var(--accent-soft); }
+  .nav-link.phase { display: flex; align-items: center; gap: 9px; font-weight: 600; }
+  .nav-link.phase.active { color: var(--accent-soft); border-left-color: var(--accent); background: rgba(129,140,248,0.08); }
+  .nav-link.phase.active .pnum { background: #312e81; color: var(--accent-soft); }
+  .nav-link.phase.soon { color: var(--dim); cursor: default; }
+  .nav-link.phase.soon:hover { background: transparent; color: var(--dim); }
+
   /* MAIN */
   .main {
-    margin-left: var(--sidebar-w);
-    flex: 1;
-    max-width: 840px;
-    padding: 0 48px 120px;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 1180px;
+    padding: 0 56px 120px;
+  }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    body { padding-left: 0; }
+    .main { padding: 0 20px 80px; }
   }
 
   /* HERO */
@@ -145,7 +172,7 @@
   .hero h1 {
     font-size: 2.4rem;
     font-weight: 800;
-    background: linear-gradient(90deg, #818cf8, #a78bfa, #fb923c);
+    background: linear-gradient(90deg, #818cf8, #a78bfa, #f472b6);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     line-height: 1.2;
@@ -189,8 +216,8 @@
   code {
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 0.84em;
-    color: var(--orange);
-    background: rgba(255,255,255,0.06);
+    color: var(--accent-soft);
+    background: var(--surface);
     padding: 1px 5px;
     border-radius: 3px;
   }
@@ -251,7 +278,7 @@
   }
 
   .compare-card.phase1 { border-top: 3px solid var(--accent); }
-  .compare-card.phase2 { border-top: 3px solid var(--orange); }
+  .compare-card.phase2 { border-top: 3px solid var(--green); }
 
   .compare-card .phase-tag {
     font-size: 0.68rem;
@@ -262,7 +289,7 @@
   }
 
   .compare-card.phase1 .phase-tag { color: var(--accent); }
-  .compare-card.phase2 .phase-tag { color: var(--orange); }
+  .compare-card.phase2 .phase-tag { color: var(--green); }
 
   .compare-card h3 {
     font-size: 1rem;
@@ -328,8 +355,8 @@
 
   .tok-a { background: rgba(129,140,248,0.15); border-color: rgba(129,140,248,0.4); color: var(--accent-soft); }
   .tok-b { background: rgba(52,211,153,0.15); border-color: rgba(52,211,153,0.4); color: var(--green); }
-  .tok-c { background: rgba(192,132,252,0.15); border-color: rgba(192,132,252,0.4); color: var(--purple); }
-  .tok-d { background: rgba(251,146,60,0.15); border-color: rgba(251,146,60,0.4); color: var(--orange); }
+  .tok-c { background: rgba(251,191,36,0.15); border-color: rgba(251,191,36,0.4); color: var(--yellow); }
+  .tok-d { background: rgba(244,114,182,0.15); border-color: rgba(244,114,182,0.4); color: var(--pink); }
   .tok-e { background: rgba(248,113,113,0.15); border-color: rgba(248,113,113,0.4); color: var(--red); }
 
   /* PIPELINE */
@@ -360,9 +387,9 @@
   }
 
   .pipe-box.hi-orange {
-    background: #431407;
-    border-color: var(--orange);
-    color: #fed7aa;
+    background: var(--surface);
+    border-color: var(--accent);
+    color: var(--accent-soft);
   }
 
   .pipe-arrow { color: #475569; font-size: 1.1rem; flex-shrink: 0; }
@@ -481,13 +508,17 @@
   }
 
   .loop-step.s1 .num { background: #312e81; color: var(--accent-soft); }
-  .loop-step.s2 .num { background: #4c1d95; color: #c4b5fd; }
-  .loop-step.s3 .num { background: #431407; color: #fed7aa; }
+  .loop-step.s2 .num { background: #312e81; color: var(--accent-soft); }
+  .loop-step.s3 .num { background: #312e81; color: var(--accent-soft); }
   .loop-step.s4 .num { background: #14532d; color: #86efac; }
   .loop-step.s5 .num { background: #7f1d1d; color: #fca5a5; }
+  .loop-step.s6 .num { background: #312e81; color: var(--accent-soft); }
 
   .loop-step .body h4 { font-size: 0.9rem; font-weight: 600; color: #f1f5f9; margin-bottom: 3px; }
   .loop-step .body p { font-size: 0.82rem; color: var(--dim); margin: 0; }
+  .loop-step .body p a, .xref a { color: var(--accent-soft); text-decoration: none; border-bottom: 1px dotted var(--border-light); }
+  .loop-step .body p a:hover, .xref a:hover { border-bottom-color: var(--accent); }
+  .loop-step .body .xref { margin-top: 7px; font-size: 0.78rem; color: var(--dim); }
 
   .loop-step .body .eg {
     margin-top: 6px;
@@ -700,8 +731,20 @@
     <p>Phase 2: Data Engineering</p>
   </div>
 
+  <details class="nav-group phase-dd">
+    <summary><span class="pnum">2</span>Phase 2 · Tokenization<span class="chev">▶</span></summary>
+    <div class="phase-dd-body">
+      <a class="nav-link phase" href="../phase1/how-transformers-work.html"><span class="pnum">1</span>Transformers</a>
+      <a class="nav-link phase active" href="#roadmap"><span class="pnum">2</span>Tokenization + Data</a>
+      <span class="nav-link phase soon"><span class="pnum">3</span>Scaling Laws</span>
+      <span class="nav-link phase soon"><span class="pnum">4</span>Distillation</span>
+      <span class="nav-link phase soon"><span class="pnum">5</span>Evaluation</span>
+    </div>
+  </details>
+
   <div class="nav-group">
     <div class="nav-group-label">Overview</div>
+    <a class="nav-link" href="#roadmap">Phase 2 start to finish</a>
     <a class="nav-link" href="#phase-shift">What changed from Phase 1</a>
     <a class="nav-link" href="#what-is-tokenization">What is tokenization</a>
   </div>
@@ -735,6 +778,17 @@
   </div>
 
   <div class="nav-group">
+    <div class="nav-group-label">Build it</div>
+    <a class="nav-link" href="#build">How to actually do it</a>
+    <a class="nav-link" href="#build-sample">1 · Sample a corpus</a>
+    <a class="nav-link" href="#build-filter">2 · Filter the text</a>
+    <a class="nav-link" href="#build-train">3 · Train the tokenizer</a>
+    <a class="nav-link" href="#build-eval">4 · Evaluate + pick</a>
+    <a class="nav-link" href="#build-retokenize">5 · Re-tokenize</a>
+    <a class="nav-link" href="#build-verify">6 · Verify run</a>
+  </div>
+
+  <div class="nav-group">
     <div class="nav-group-label">Q&amp;A</div>
     <a class="nav-link" href="#q-same-word">"king" vs "King"<span class="badge">Q</span></a>
     <a class="nav-link" href="#q-numbers">Numbers and dates<span class="badge">Q</span></a>
@@ -742,6 +796,9 @@
     <a class="nav-link" href="#q-why-not-gpt2">Why not GPT-2's tokenizer?<span class="badge">Q</span></a>
     <a class="nav-link" href="#q-data-matters">How much does quality matter?<span class="badge">Q</span></a>
     <a class="nav-link" href="#q-decisions">Why does this phase feel harder?<span class="badge">Q</span></a>
+    <a class="nav-link" href="#q-128k-multilingual">Is 128K multilingual?<span class="badge">Q</span></a>
+    <a class="nav-link" href="#q-code-mixing">Hinglish / code-mixing<span class="badge">Q</span></a>
+    <a class="nav-link" href="#q-rust">Why Rust, not Python?<span class="badge">Q</span></a>
   </div>
 </nav>
 
@@ -753,6 +810,86 @@
     <h1>The model is done.<br>Now feed it properly.</h1>
     <p>Phase 1 built the engine. Phase 2 decides what fuel goes in and what language the engine thinks in. This is where most of the real quality difference between models comes from.</p>
   </div>
+
+
+  <!-- ROADMAP -->
+  <section class="section" id="roadmap">
+    <div class="section-label">Start here</div>
+    <h2>Phase 2 from start to finish</h2>
+
+    <p>Everything else on this page is a piece of one pipeline. You start with raw text and end with your own tokenizer plus a clean, tokenized dataset that Phase 3 will train on. Each step produces the input the next step needs, which is why the order matters. The concept sections further down explain the <em>why</em> behind each step. This is the <em>what</em>, in order.</p>
+
+    <div class="pipeline" style="margin-top:22px">
+      <div class="pipe-box">Raw text sample</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box hi-orange">Clean it</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box hi-orange">Train tokenizer</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box hi-orange">Pick vocab size</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box hi-orange">Tokenize corpus</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box hi-accent">Verify run</div>
+    </div>
+
+    <div class="loop-steps">
+      <div class="loop-step s1">
+        <div class="num">1</div>
+        <div class="body">
+          <h4>Get a raw text sample</h4>
+          <p>Carve 1 to 2 GB of plain text out of the OpenWebText shards you already have. This is the input for everything downstream: both the filters and the tokenizer trainer read raw text, so it has to exist first.</p>
+        </div>
+      </div>
+      <div class="loop-step s2">
+        <div class="num">2</div>
+        <div class="body">
+          <h4>Clean the text</h4>
+          <p>Run the filtering pipeline: language filter, then quality heuristics, then exact and near deduplication. This comes <strong>before</strong> training the tokenizer for a concrete reason: the tokenizer learns its vocabulary from whatever text you feed it. Feed it spam and boilerplate and it spends merges memorising junk. Clean first so the merges reflect real language.</p>
+          <div class="xref">Concepts: <a href="#garbage">garbage in, garbage out</a>, <a href="#pipeline">the filtering pipeline</a></div>
+        </div>
+      </div>
+      <div class="loop-step s3">
+        <div class="num">3</div>
+        <div class="body">
+          <h4>Train the BPE tokenizer</h4>
+          <p>Run byte-level BPE on the clean text, with your chosen special tokens, at a few candidate vocabulary sizes (8K, 16K, 32K). This produces the merge rules and vocabulary. It depends on step 2 because the merges are only as good as the text they were learned from.</p>
+          <div class="xref">Concepts: <a href="#bpe-intro">how BPE works</a>, <a href="#vocab-size">vocabulary size</a>, <a href="#special-tokens">special tokens</a>, <a href="#byte-level">byte-level BPE</a>, <a href="#tokenizers-lib">the tokenizers library</a></div>
+        </div>
+      </div>
+      <div class="loop-step s4">
+        <div class="num">4</div>
+        <div class="body">
+          <h4>Evaluate and pick a vocab size</h4>
+          <p>Measure the compression ratio of each candidate against GPT-2's tokenizer on held-out text, and pick the best tradeoff between fewer tokens and a bigger embedding table. This step turns step 3's three candidates into one chosen tokenizer.</p>
+          <div class="xref">Concepts: <a href="#compression">compression ratio</a>, <a href="#why-train-own">why train your own</a></div>
+        </div>
+      </div>
+      <div class="loop-step s5">
+        <div class="num">5</div>
+        <div class="body">
+          <h4>Tokenize the clean corpus</h4>
+          <p>Run the chosen tokenizer over the cleaned data to produce new <code>train.bin</code> and <code>val.bin</code>, replacing the GPT-2-tokenized versions from Phase 1. This is the actual dataset every Phase 3 training run will read.</p>
+        </div>
+      </div>
+      <div class="loop-step s6">
+        <div class="num">6</div>
+        <div class="body">
+          <h4>Verify with a short run</h4>
+          <p>Train for about 1,000 steps on the new data and confirm the loss behaves like Phase 1. This is a cheap sanity check that catches pipeline bugs (a broken vocab, a tokenization mismatch) before you commit GPU hours to long runs.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="analogy" style="margin-top:20px">
+      <strong>The thread:</strong> raw text becomes clean text (step 2), clean text teaches the tokenizer (step 3), the tokenizer is chosen by measurement (step 4), the chosen tokenizer rewrites the dataset (step 5), and a short run proves the dataset works (step 6). Every section below this is the reasoning behind one of these moves.
+    </div>
+
+    <div class="card" style="margin-top:14px;border-left:3px solid var(--yellow)">
+      <h3 style="color:var(--yellow)">A note on order</h3>
+      <p>Steps 2 and 3 have a real dependency, but in practice you can overlap them. Filtering a large corpus can run unattended for hours, so it is fine to train a throwaway tokenizer on the raw sample first just to see the mechanics work, then retrain the real one on the filtered text once step 2 finishes. The dependency is about which tokenizer you <em>keep</em>, not which you run first.</p>
+    </div>
+  </section>
 
 
   <!-- WHAT CHANGED -->
@@ -1058,8 +1195,8 @@
     <p>Standard BPE starts from characters. Byte-level BPE starts from raw bytes instead. Every possible byte value (0–255) is a starting token.</p>
     <p>Why bytes instead of characters? Because characters are ambiguous. Unicode has over 140,000 characters. Some are rare enough that a character-level vocabulary would either omit them (forcing UNK) or bloat the starting set unnecessarily. Bytes sidestep this entirely. Every possible input in any language, encoding, emoji, or URL is representable as a sequence of bytes. There is no UNK.</p>
 
-    <div class="card" style="border-left:3px solid var(--blue);margin-top:16px">
-      <h3 style="color:var(--blue)">This is what GPT-2 and most modern tokenizers use</h3>
+    <div class="card" style="border-left:3px solid var(--accent);margin-top:16px">
+      <h3 style="color:var(--accent-soft)">This is what GPT-2 and most modern tokenizers use</h3>
       <p>Byte-level BPE means the tokenizer can handle any Unicode text, code, emoji, URLs, and arbitrary bytes without ever producing an unknown token. The HuggingFace <code>ByteLevelBPETokenizer</code> implements this.</p>
     </div>
 
@@ -1273,6 +1410,182 @@ tokenizer.<span class="fn">save_model</span>(<span class="st">"src/tokenizer_/"<
   </section>
 
 
+  <!-- BUILD IT -->
+  <hr class="divider">
+
+  <section class="section" id="build">
+    <div class="section-label">Build it</div>
+    <h2>How to actually do it</h2>
+    <p>Everything above is the reasoning. This is the code, one block per step of the roadmap. The files you end up with:</p>
+    <div class="code-block"><span class="cm"># new files</span>
+data/sample_corpus.py        <span class="cm"># step 1: carve a text sample</span>
+data/filter.py               <span class="cm"># step 2: clean it</span>
+src/tokenizer_/train_tokenizer.py     <span class="cm"># step 3</span>
+src/tokenizer_/evaluate_tokenizer.py  <span class="cm"># step 4</span>
+data/prepare.py              <span class="cm"># step 5: edited to use your tokenizer</span></div>
+    <p style="margin-top:14px">The code assumes the OpenWebText dataset is already on disk at <code>data/openwebtext/</code> from Phase 1. Each block is small on purpose: the point is to read it and understand every line, not to run a black box.</p>
+  </section>
+
+  <section class="section" id="build-sample">
+    <div class="section-label">Build it · Step 1</div>
+    <h2>Sample a corpus</h2>
+    <p>You do not need all 8 million documents to train a tokenizer or to test filters. A couple of gigabytes is plenty, and it keeps iteration fast. This reads the OpenWebText dataset from disk and writes one document per line to a plain text file, which is the format the tokenizer trainer and the filters both expect.</p>
+    <div class="code-block"><span class="cm"># data/sample_corpus.py</span>
+<span class="kw">import</span> os
+<span class="kw">from</span> datasets <span class="kw">import</span> load_from_disk
+
+DATA = os.path.<span class="fn">dirname</span>(os.path.<span class="fn">abspath</span>(__file__))
+ds = <span class="fn">load_from_disk</span>(os.path.<span class="fn">join</span>(DATA, <span class="st">"openwebtext"</span>))
+
+N_DOCS = <span class="num">200_000</span>           <span class="cm"># ~1-2 GB of text, enough for a tokenizer</span>
+out = os.path.<span class="fn">join</span>(DATA, <span class="st">"sample.txt"</span>)
+
+<span class="kw">with</span> <span class="fn">open</span>(out, <span class="st">"w"</span>, encoding=<span class="st">"utf-8"</span>) <span class="kw">as</span> f:
+    <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(N_DOCS):
+        text = ds[i][<span class="st">"text"</span>].<span class="fn">strip</span>()
+        <span class="kw">if</span> text:
+            f.<span class="fn">write</span>(text.<span class="fn">replace</span>(<span class="st">"\n"</span>, <span class="st">" "</span>) + <span class="st">"\n"</span>)  <span class="cm"># one doc per line</span>
+
+<span class="fn">print</span>(<span class="st">f"wrote {N_DOCS:,} docs to {out}"</span>)</div>
+    <p style="margin-top:14px">The <code>replace("\n", " ")</code> flattens each document onto a single line so that one line equals one document. That matters in step 2, where the filters decide keep-or-drop per line.</p>
+  </section>
+
+  <section class="section" id="build-filter">
+    <div class="section-label">Build it · Step 2</div>
+    <h2>Filter the text</h2>
+    <p>Three passes in one file: language detection, quality heuristics, and exact deduplication. Each function returns True for "keep" and False for "drop." Running them as a chain means a document has to pass all three to survive.</p>
+    <p>Language detection uses fastText's small model. Download it once: it lives at <code>lid.176.bin</code> on the fastText site. Install the library with <code>pip install fasttext-wheel</code>.</p>
+    <div class="code-block"><span class="cm"># data/filter.py</span>
+<span class="kw">import</span> hashlib, fasttext
+
+lang = fasttext.<span class="fn">load_model</span>(<span class="st">"lid.176.bin"</span>)
+
+<span class="kw">def</span> <span class="fn">is_english</span>(text):
+    label, prob = lang.<span class="fn">predict</span>(text, k=<span class="num">1</span>)
+    <span class="kw">return</span> label[<span class="num">0</span>] == <span class="st">"__label__en"</span> <span class="kw">and</span> prob[<span class="num">0</span>] &gt; <span class="num">0.65</span>
+
+<span class="kw">def</span> <span class="fn">passes_quality</span>(text):
+    words = text.<span class="fn">split</span>()
+    <span class="kw">if</span> <span class="fn">len</span>(words) &lt; <span class="num">100</span>:                       <span class="cm"># too short to be useful</span>
+        <span class="kw">return</span> <span class="kw">False</span>
+    n = <span class="fn">max</span>(<span class="fn">len</span>(text), <span class="num">1</span>)
+    <span class="kw">if</span> <span class="fn">sum</span>(c <span class="kw">in</span> <span class="st">"{}[]&lt;&gt;|@#^*_=~"</span> <span class="kw">for</span> c <span class="kw">in</span> text) / n &gt; <span class="num">0.10</span>:  <span class="cm"># symbol/SEO junk</span>
+        <span class="kw">return</span> <span class="kw">False</span>
+    <span class="kw">if</span> <span class="fn">sum</span>(c.<span class="fn">isdigit</span>() <span class="kw">for</span> c <span class="kw">in</span> text) / n &gt; <span class="num">0.30</span>:       <span class="cm"># number spam</span>
+        <span class="kw">return</span> <span class="kw">False</span>
+    <span class="kw">return</span> <span class="kw">True</span>
+
+seen = <span class="fn">set</span>()
+<span class="kw">def</span> <span class="fn">is_new</span>(text):                               <span class="cm"># exact dedup via content hash</span>
+    h = hashlib.<span class="fn">md5</span>(text.<span class="fn">encode</span>()).<span class="fn">hexdigest</span>()
+    <span class="kw">if</span> h <span class="kw">in</span> seen:
+        <span class="kw">return</span> <span class="kw">False</span>
+    seen.<span class="fn">add</span>(h)
+    <span class="kw">return</span> <span class="kw">True</span>
+
+kept = total = <span class="num">0</span>
+<span class="kw">with</span> <span class="fn">open</span>(<span class="st">"data/sample.txt"</span>) <span class="kw">as</span> fin, <span class="fn">open</span>(<span class="st">"data/clean.txt"</span>, <span class="st">"w"</span>) <span class="kw">as</span> fout:
+    <span class="kw">for</span> line <span class="kw">in</span> fin:
+        total += <span class="num">1</span>
+        t = line.<span class="fn">strip</span>()
+        <span class="kw">if</span> t <span class="kw">and</span> <span class="fn">is_english</span>(t) <span class="kw">and</span> <span class="fn">passes_quality</span>(t) <span class="kw">and</span> <span class="fn">is_new</span>(t):
+            fout.<span class="fn">write</span>(t + <span class="st">"\n"</span>)
+            kept += <span class="num">1</span>
+<span class="fn">print</span>(<span class="st">f"kept {kept:,}/{total:,} ({100*kept/total:.1f}%)"</span>)</div>
+    <p style="margin-top:14px">The thresholds (100 words, 10% symbols, 30% digits, 0.65 language confidence) are starting guesses, not laws. This is the judgment-call part of the phase: run it, open <code>clean.txt</code>, read what survived and what got cut, then adjust. <strong>Near-deduplication</strong> (catching near-identical rewrites, not just exact copies) is heavier and best handled by a dedicated library rather than hand-rolled. Run <code>text-dedup</code> with MinHash over <code>clean.txt</code> as a separate pass once exact dedup looks right.</p>
+    <div class="card" style="margin-top:14px;border-left:3px solid var(--yellow)">
+      <h3 style="color:var(--yellow)">Look at the data</h3>
+      <p>Before moving on, actually open 100 random lines of <code>clean.txt</code>. This is the single highest-value habit in data engineering. It is how you catch a heuristic that is silently deleting good documents, or junk that slipped through.</p>
+    </div>
+  </section>
+
+  <section class="section" id="build-train">
+    <div class="section-label">Build it · Step 3</div>
+    <h2>Train the tokenizer</h2>
+    <p>This is the core of the phase. <code>ByteLevelBPETokenizer</code> does the byte-level BPE described earlier: it starts from raw bytes and merges frequent pairs until it hits the vocabulary size. You train three sizes so you can compare them in the next step. Each one saves a <code>vocab.json</code>, a <code>merges.txt</code>, and a single combined <code>tokenizer.json</code> that step 5 loads.</p>
+    <div class="code-block"><span class="cm"># src/tokenizer_/train_tokenizer.py</span>
+<span class="kw">import</span> os
+<span class="kw">from</span> tokenizers <span class="kw">import</span> ByteLevelBPETokenizer
+
+<span class="kw">for</span> vocab_size <span class="kw">in</span> (<span class="num">8_000</span>, <span class="num">16_000</span>, <span class="num">32_000</span>):
+    tok = <span class="fn">ByteLevelBPETokenizer</span>()
+    tok.<span class="fn">train</span>(
+        files=[<span class="st">"data/clean.txt"</span>],
+        vocab_size=vocab_size,
+        min_frequency=<span class="num">2</span>,                  <span class="cm"># a pair must occur 2+ times to merge</span>
+        special_tokens=[<span class="st">"&lt;|endoftext|&gt;"</span>, <span class="st">"&lt;|pad|&gt;"</span>],
+    )
+    out = <span class="st">f"src/tokenizer_/bpe_{vocab_size}"</span>
+    os.<span class="fn">makedirs</span>(out, exist_ok=<span class="kw">True</span>)
+    tok.<span class="fn">save_model</span>(out)                       <span class="cm"># vocab.json + merges.txt</span>
+    tok.<span class="fn">save</span>(<span class="st">f"{out}/tokenizer.json"</span>)         <span class="cm"># the full tokenizer in one file</span>
+    <span class="fn">print</span>(<span class="st">f"trained {vocab_size} -&gt; {out}"</span>)</div>
+    <p style="margin-top:14px">The special tokens are reserved before any merges happen, so they get stable low IDs. <code>&lt;|endoftext|&gt;</code> is the document boundary marker you append between documents when tokenizing the dataset in step 5. On a couple of GB this runs in minutes, which is the whole reason the library is written in Rust.</p>
+  </section>
+
+  <section class="section" id="build-eval">
+    <div class="section-label">Build it · Step 4</div>
+    <h2>Evaluate and pick a vocab size</h2>
+    <p>The number that decides the winner is the compression ratio: tokens produced per 1,000 characters on held-out text. Fewer tokens means each token carries more text, so more fits in the same context window and training is cheaper. You compare your three candidates against GPT-2's tokenizer as a baseline.</p>
+    <div class="code-block"><span class="cm"># src/tokenizer_/evaluate_tokenizer.py</span>
+<span class="kw">from</span> tokenizers <span class="kw">import</span> ByteLevelBPETokenizer
+<span class="kw">from</span> transformers <span class="kw">import</span> GPT2TokenizerFast
+
+sample = <span class="fn">open</span>(<span class="st">"data/clean.txt"</span>).<span class="fn">read</span>()[:<span class="num">1_000_000</span>]   <span class="cm"># 1M chars</span>
+chars = <span class="fn">len</span>(sample)
+
+gpt2 = GPT2TokenizerFast.<span class="fn">from_pretrained</span>(<span class="st">"gpt2"</span>)
+<span class="fn">print</span>(<span class="st">f"GPT-2      {len(gpt2.encode(sample))/chars*1000:6.1f} tok / 1k chars"</span>)
+
+<span class="kw">for</span> v <span class="kw">in</span> (<span class="num">8_000</span>, <span class="num">16_000</span>, <span class="num">32_000</span>):
+    tok = <span class="fn">ByteLevelBPETokenizer</span>(
+        <span class="st">f"src/tokenizer_/bpe_{v}/vocab.json"</span>,
+        <span class="st">f"src/tokenizer_/bpe_{v}/merges.txt"</span>,
+    )
+    n = <span class="fn">len</span>(tok.<span class="fn">encode</span>(sample).ids)
+    <span class="fn">print</span>(<span class="st">f"yours {v:&lt;6} {n/chars*1000:6.1f} tok / 1k chars"</span>)</div>
+    <p style="margin-top:14px">Lower is better, but bigger vocab always compresses better, so do not just pick 32K. Weigh the compression gain against the larger embedding table it forces (every extra token is another row of size <code>n_embd</code> in the model). For a 75M model, 16K is usually the sweet spot. Pick the size where the compression curve starts to flatten.</p>
+  </section>
+
+  <section class="section" id="build-retokenize">
+    <div class="section-label">Build it · Step 5</div>
+    <h2>Re-tokenize the dataset</h2>
+    <p>Now point the data pipeline at your tokenizer instead of GPT-2's. This is a small edit to the Phase 1 <code>data/prepare.py</code>: swap the tokenizer, and read the end-of-text ID from your vocabulary. Everything else (the uint16 output, the train/val split) stays the same.</p>
+    <div class="code-block"><span class="cm"># data/prepare.py  (the parts that change)</span>
+<span class="kw">from</span> tokenizers <span class="kw">import</span> Tokenizer
+
+VOCAB = <span class="num">16_000</span>                                  <span class="cm"># the size you picked in step 4</span>
+tok = Tokenizer.<span class="fn">from_file</span>(<span class="st">f"src/tokenizer_/bpe_{VOCAB}/tokenizer.json"</span>)
+eot = tok.<span class="fn">token_to_id</span>(<span class="st">"&lt;|endoftext|&gt;"</span>)
+
+<span class="kw">def</span> <span class="fn">tokenize</span>(example):
+    ids = tok.<span class="fn">encode</span>(example[<span class="st">"text"</span>]).ids
+    ids.<span class="fn">append</span>(eot)                            <span class="cm"># mark the document boundary</span>
+    <span class="kw">return</span> {<span class="st">"ids"</span>: ids, <span class="st">"len"</span>: <span class="fn">len</span>(ids)}</div>
+    <p style="margin-top:14px">Run <code>python data/prepare.py</code> to regenerate <code>train.bin</code> and <code>val.bin</code>. These now hold your token IDs, not GPT-2's. <code>uint16</code> holds values up to 65,535, so any vocab size up to that is fine.</p>
+    <div class="card" style="margin-top:14px;border-left:3px solid var(--red)">
+      <h3 style="color:var(--red)">The gotcha that breaks training</h3>
+      <p>The model's <code>vocab_size</code> must equal your tokenizer's vocabulary size. Phase 1 used 50,257 (GPT-2). If you trained a 16K tokenizer, set <code>vocab_size = 16_000</code> in the model config, or the embedding table and the token IDs will not line up and training will error out or produce garbage.</p>
+    </div>
+  </section>
+
+  <section class="section" id="build-verify">
+    <div class="section-label">Build it · Step 6</div>
+    <h2>Verify with a short run</h2>
+    <p>Before committing GPU hours, run a tiny training job to prove the new pipeline works end to end. Set a short run and the matching vocab size in <code>src/train.py</code>:</p>
+    <div class="code-block"><span class="cm"># src/train.py -> TrainConfig</span>
+max_iters: int = <span class="num">1000</span>          <span class="cm"># short sanity run, not a real one</span>
+vocab_size: int = <span class="num">16_000</span>       <span class="cm"># MUST match your tokenizer</span></div>
+    <p style="margin-top:14px">Then run it and watch the validation loss:</p>
+    <div class="code-block">python data/prepare.py     <span class="cm"># rebuild bins with your tokenizer</span>
+python src/train.py        <span class="cm"># 1k-step sanity run</span></div>
+    <p style="margin-top:14px">What you are checking: does the loss start high and fall smoothly, landing somewhere near the Phase 1 ballpark? If yes, the tokenizer, the bins, and the model config all agree, and you are ready for the long Phase 3 runs. If the loss is flat, explodes, or starts absurdly high, you have a vocab-size mismatch or a broken tokenizer file, which is exactly what this cheap run is meant to catch.</p>
+    <div class="analogy" style="margin-top:16px">
+      <strong>Done with Phase 2:</strong> you now own a tokenizer tuned to your data and a clean, deduplicated dataset tokenized with it. Both feed straight into Phase 3, where the same pipeline runs at full scale for the scaling-law experiments.
+    </div>
+  </section>
+
+
   <!-- Q&A -->
   <hr class="divider">
 
@@ -1307,8 +1620,8 @@ tokenizer.<span class="fn">save_model</span>(<span class="st">"src/tokenizer_/"<
         <p>If a tokenizer is trained mostly on English text, the merge rules reflect English frequency patterns. Common English words and subwords get merged into single tokens. Non-English words appear far less often and don't accumulate enough frequency to earn merges, so they get split into smaller and smaller pieces.</p>
         <p>In extreme cases, languages with non-Latin scripts (Arabic, Chinese, Korean, Thai) can produce 5–10x more tokens than English for text carrying the same amount of information. This makes those languages effectively more expensive: the model spends more of its context window on the same content.</p>
         <p>The fix is to include more of those languages in the tokenizer training corpus so their patterns earn their own merges. LLaMA 3's 128K vocabulary was partly motivated by improving multilingual tokenization efficiency.</p>
-        <div class="card" style="margin-top:12px;border-left:3px solid var(--blue)">
-          <h3 style="color:var(--blue)">For this project</h3>
+        <div class="card" style="margin-top:12px;border-left:3px solid var(--accent)">
+          <h3 style="color:var(--accent-soft)">For this project</h3>
           <p>OpenWebText is English-dominated, so your tokenizer will be English-efficient. That is fine for the current goal. If you wanted multilingual capability later, you would need to add multilingual data to the tokenizer training corpus.</p>
         </div>
       </div>
@@ -1340,12 +1653,87 @@ tokenizer.<span class="fn">save_model</span>(<span class="st">"src/tokenizer_/"<
         <p><strong>The practical answer:</strong> make a reasonable choice, run it, look at the data, adjust. You will iterate. That iteration is the learning. Phase 1 was about understanding a fixed system. Phase 2 is about building judgment.</p>
       </div>
     </div>
+
+    <div class="qa-block" id="q-128k-multilingual">
+      <div class="qa-q">Does the 128K vocabulary in GPT-4 and LLaMA 3 include other languages?</div>
+      <div class="qa-a">
+        <p>Yes. That is the main reason the number grew. Multilingual coverage is most of what those extra slots buy.</p>
+        <p>LLaMA 2 used a 32K vocabulary and was English-focused. LLaMA 3 jumped to 128K. GPT-4's <code>cl100k_base</code> is around 100K, and GPT-4o's <code>o200k_base</code> is around 200K. The jump was not because English needs more tokens. It was to make non-English text and code tokenize efficiently.</p>
+        <p>The vocabulary is one shared pool, not 128K per language. During tokenizer training you feed in a corpus that mixes many languages, and the merges get allocated in proportion to how much of each language is present. A language with lots of data earns many dedicated subword tokens. A language with little data earns few, and its text falls back toward byte-level fragments.</p>
+        <div class="analogy">
+          <strong>Analogy:</strong> One shared shorthand notebook for a multilingual office. The more memos written in a given language, the more dedicated shorthand symbols that language earns. Rare languages still get written down, just letter by letter, which takes more strokes.
+        </div>
+        <div class="card" style="margin-top:12px;border-left:3px solid var(--accent)">
+          <h3 style="color:var(--accent-soft)">For this project</h3>
+          <p>Your corpus is English-dominated, so a 16K or 32K English-tuned vocabulary is the right call. You would only need a 128K-style vocabulary if you wanted real multilingual or heavy code capability, and that costs embedding-table VRAM you do not want to spend at 75M params.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="qa-block" id="q-code-mixing">
+      <div class="qa-q">How does it tokenize Hinglish, where someone mixes Hindi and English in one sentence?</div>
+      <div class="qa-a">
+        <p>Code-mixing is not a special case for the tokenizer. It tokenizes each piece of text with whatever merges apply, regardless of which language the piece came from. The interesting part is how efficiently each piece encodes, and that splits into two situations depending on the script.</p>
+
+        <h3 style="color:var(--accent-soft);margin-top:14px">Romanized Hindi (Latin script)</h3>
+        <p>Most casual Hinglish is typed in Latin letters: <code>"bro kal movie dekhne chalein"</code>. Because byte-level BPE starts from raw bytes and Latin letters are ordinary bytes, this never produces an unknown token. But the merges were learned mostly from English, so Hindi words only tokenize efficiently if they appeared often enough in the tokenizer's training data to earn their own merges. Social media text now contains so much Hinglish that frequent words like <code>kya</code>, <code>nahi</code>, <code>bhai</code> often do get single tokens. Rarer words split into fragments like <code>de</code> + <code>kh</code> + <code>ne</code>. The English words in the same sentence tokenize as normal.</p>
+
+        <h3 style="color:var(--accent-soft);margin-top:14px">Devanagari script</h3>
+        <p>If the Hindi is written in its native script (<code>कैसे हो</code>), each character is several UTF-8 bytes, usually three. Byte-level BPE still represents it with no unknown token, but if the tokenizer saw little Devanagari it has no merges for it, so each character collapses toward two or three separate byte tokens. A short Hindi phrase can cost many more tokens than the same idea in English. This is the 5-10x inefficiency from the non-English question above, taken to an extreme.</p>
+
+        <div class="card" style="margin-top:14px;border-left:3px solid var(--green)">
+          <h3 style="color:var(--green)">The key idea</h3>
+          <p>Byte-level BPE never fails on any script. There is no unknown token, ever. What changes is efficiency, and efficiency is decided entirely by how much of that language and script was in the tokenizer's training corpus. Handling Hinglish well is mostly a data problem, not a tokenizer-algorithm problem.</p>
+        </div>
+        <p style="margin-top:14px">Whether the model then <em>understands</em> the Hinglish is a separate question answered by the training data, not the tokenizer. The tokenizer only decides how the text is chopped into IDs.</p>
+      </div>
+    </div>
+
+    <div class="qa-block" id="q-rust">
+      <div class="qa-q">Why is the tokenizers library written in Rust and not Python?</div>
+      <div class="qa-a">
+        <p>Because tokenizing is a tight loop over an enormous amount of text, and that is exactly the kind of work Python is slow at. The fix is to move the hot loop out of Python and into compiled native code. Rust is the language HuggingFace chose for it.</p>
+
+        <div class="analogy">
+          <strong>Analogy:</strong> Counting every grain of rice in a warehouse. Doing it by hand (Python) works for a cup of rice but takes forever for a warehouse. A machine built for counting (Rust) does the same job orders of magnitude faster, and you can run many machines at once.
+        </div>
+
+        <div class="loop-steps" style="margin-top:18px">
+          <div class="loop-step s1">
+            <div class="num">1</div>
+            <div class="body">
+              <h4>The work is a loop over billions of characters</h4>
+              <p>Training BPE means counting every adjacent pair across gigabytes of text, then repeating thousands of merges. Encoding the corpus means chopping billions of tokens. Pure Python is interpreted and runs this kind of loop roughly 50 to 100 times slower than compiled code. What takes minutes in Rust takes hours in Python.</p>
+            </div>
+          </div>
+          <div class="loop-step s2">
+            <div class="num">2</div>
+            <div class="body">
+              <h4>No GIL, so it uses every CPU core</h4>
+              <p>Python's Global Interpreter Lock prevents true multithreading for CPU work. Rust has no such limit, so the library tokenizes batches in parallel across all your cores. This matters because if tokenization is slow, your expensive GPU sits idle waiting for data to train on.</p>
+            </div>
+          </div>
+          <div class="loop-step s3">
+            <div class="num">3</div>
+            <div class="body">
+              <h4>Native speed with memory safety</h4>
+              <p>Rust compiles to machine code like C, but without the buffer-overflow and segfault risks of C or C++, and with no garbage-collector pauses. You still write Python: the Rust core is wrapped in a Python API, so you get the speed underneath and the convenience on top.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:14px;border-left:3px solid var(--accent)">
+          <h3 style="color:var(--accent-soft)">It is not unique to Rust</h3>
+          <p>The real requirement is "compiled native code, not pure Python." OpenAI's <code>tiktoken</code> is also written in Rust. Google's <code>SentencePiece</code> is written in C++. The common thread is keeping the hot loop out of the interpreter.</p>
+        </div>
+      </div>
+    </div>
   </section>
 
 </main>
 
 <script>
-  const links = document.querySelectorAll('.nav-link');
+  const links = document.querySelectorAll('.nav-link:not(.phase)');
   const sections = document.querySelectorAll('section[id]');
 
   const observer = new IntersectionObserver(entries => {

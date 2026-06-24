@@ -79,6 +79,10 @@ the biggest difference.
 
 ---
 
+## Published model
+
+The 77M checkpoint is on Hugging Face: [redredredredredred/slm-from-scratch-77m](https://huggingface.co/redredredredredred/slm-from-scratch-77m). Weights as fp32 safetensors, with a model card and the `model.py` needed to load it.
+
 ## Next
 
 Phase 2 — train a custom BPE tokenizer and build a cleaner data pipeline.

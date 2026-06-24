@@ -26,6 +26,7 @@ A hands-on, end-to-end curriculum covering every step of the LLM training pipeli
 - [x] Write `train_step()` — bfloat16 autocast, gradient accumulation, grad norm clipping
 - [x] First training run — 5K steps, val loss 5.12, ~15 min on RTX 5070 Ti
 - [x] Text generation — `python src/generate.py --prompt "..."`
+- [x] Published the 77M checkpoint to Hugging Face: [redredredredredred/slm-from-scratch-77m](https://huggingface.co/redredredredredred/slm-from-scratch-77m)
 
 ---
 
