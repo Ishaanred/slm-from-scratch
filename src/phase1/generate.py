@@ -1,6 +1,6 @@
 """
 src/generate.py — sample text from a trained checkpoint
-Usage: python src/generate.py --prompt "The meaning of life is"
+Usage: python src/phase1/generate.py --prompt "The meaning of life is"
 """
 
 import argparse
@@ -34,7 +34,7 @@ def main():
     parser.add_argument("--prompt", type=str, default="The meaning of life is")
     parser.add_argument("--max_new_tokens", type=int, default=200)
     parser.add_argument("--temperature", type=float, default=0.8)
-    parser.add_argument("--checkpoint", type=str, default="checkpoints/best.pt")
+    parser.add_argument("--checkpoint", type=str, default="checkpoints/phase1/best.pt")
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"

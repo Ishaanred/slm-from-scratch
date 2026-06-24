@@ -1,7 +1,15 @@
 # datasets — too large for git
 data/openwebtext/
-data/train.bin
-data/val.bin
+data/phase1/train.bin
+data/phase1/val.bin
+data/phase2/train.bin
+data/phase2/val.bin
+data/phase2/sample.txt
+data/phase2/clean.txt
+data/phase2/lid.176.bin
+
+# trained tokenizers (regenerable artifacts)
+src/phase2/bpe_*/
 
 # checkpoints
 checkpoints/

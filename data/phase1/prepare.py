@@ -2,7 +2,7 @@
 Tokenize OpenWebText into train.bin and val.bin.
 
 Output: two memory-mapped uint16 files the training loop reads directly.
-Run once: python data/prepare.py
+Run once: python data/phase1/prepare.py
 """
 
 import os
@@ -12,7 +12,7 @@ from transformers import GPT2TokenizerFast
 from tqdm import tqdm
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
-DATASET_PATH = os.path.join(DATA_DIR, "openwebtext")
+DATASET_PATH = os.path.join(DATA_DIR, "..", "openwebtext")
 OUT_DIR = os.path.join(DATA_DIR)
 
 VAL_SIZE = 5000  # documents held out for validation

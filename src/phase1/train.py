@@ -28,7 +28,7 @@ from model import GPT, GPTConfig
 
 class TrainConfig:
     # Data
-    data_dir: str = "data/"
+    data_dir: str = "data/phase1/"
     block_size: int = 1024
 
     # Model
@@ -58,7 +58,7 @@ class TrainConfig:
     min_lr: float = 6e-5
 
     # Checkpointing
-    out_dir: str = "checkpoints/"
+    out_dir: str = "checkpoints/phase1/"
     resume_from: str = ""
 
     # Logging

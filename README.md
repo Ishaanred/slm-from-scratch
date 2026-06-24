@@ -85,39 +85,56 @@ Benchmark on HellaSwag, PIQA, ARC, GSM8K, HumanEval. Find the worst-performing e
 
 ## Running Phase 1
 
-### 1. Install dependencies
+Each phase is self-contained under its own folder (`src/phase1/`, `data/phase1/`).
+
 ```bash
+# 1. Install dependencies
 pip install torch transformers datasets tokenizers wandb tqdm einops
-```
 
-### 2. Verify GPU
-```bash
+# 2. Verify GPU
 python -c "import torch; print(torch.cuda.get_device_name(0))"
+
+# 3. Tokenize OpenWebText with the GPT-2 tokenizer -> data/phase1/{train,val}.bin (~20-30 min)
+python data/phase1/prepare.py
+
+# 4. Train (writes to checkpoints/phase1/), ~15 min for 5K steps on RTX 5070 Ti
+python src/phase1/train.py
+
+# 5. Generate text from the trained checkpoint
+python src/phase1/generate.py --prompt "The meaning of life is"
 ```
 
-### 3. Tokenize the dataset
-Run once to produce `data/train.bin` and `data/val.bin`:
-```bash
-python data/prepare.py
-```
-Takes ~20-30 minutes on CPU.
+To skip wandb, run with `WANDB_MODE=disabled` or comment out `wandb.init(...)` in `src/phase1/train.py`.
 
-### 4. (Optional) Set up Weights & Biases
-```bash
-wandb login
-```
-To skip wandb, comment out the `wandb.init(...)` line in `src/train.py`.
+---
 
-### 5. Train
-```bash
-python src/train.py
-```
-Expected time on RTX 5070 Ti: ~15 min for 5K steps.
+## Running Phase 2
 
-### 6. Generate text
+Phase 2 trains its own BPE tokenizer and a cleaner data pipeline (`src/phase2/`, `data/phase2/`).
+
 ```bash
-python src/generate.py --prompt "The meaning of life is"
+# 1. Sample a corpus from OpenWebText  -> data/phase2/sample.txt
+python data/phase2/sample_corpus.py
+
+# 2. Filter it (needs fasttext + lid.176.bin)  -> data/phase2/clean.txt
+pip install fasttext-wheel
+curl -L -o data/phase2/lid.176.bin https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin
+python data/phase2/filter.py
+
+# 3. Train BPE tokenizers at 8K/16K/32K  -> src/phase2/bpe_*/
+python src/phase2/train_tokenizer.py
+
+# 4. Compare compression vs GPT-2, pick a vocab size
+python src/phase2/evaluate_tokenizer.py
+
+# 5. Tokenize the clean corpus  -> data/phase2/{train,val}.bin
+python data/phase2/prepare.py
+
+# 6. Verify with a short run (set max_iters small first), writes to checkpoints/phase2/
+python src/phase2/train.py
 ```
+
+See [`docs/phase2/tokenization.html`](docs/phase2/tokenization.html) for the full walkthrough and the reasoning behind each step.
 
 ---
 
@@ -138,27 +155,36 @@ python src/generate.py --prompt "The meaning of life is"
 
 ## Repository Structure
 
+Each phase is fully self-contained (its own copy of `model.py`) so phases can be read and run independently.
+
 ```
 slm-from-scratch/
 ├── src/
-│   ├── model.py          # GPT transformer — written from scratch
-│   ├── train.py          # Training loop with W&B, checkpointing, LR schedule
-│   ├── generate.py       # Text generation from a trained checkpoint
-│   ├── tokenizer_/       # BPE tokenizer training — Phase 2
-│   ├── data/             # Filtering, dedup, synthetic gen — Phase 2
-│   └── eval/             # lm-eval-harness wrappers — Phase 5
+│   ├── phase1/                  # Transformers
+│   │   ├── model.py             # GPT transformer — written from scratch
+│   │   ├── train.py             # Training loop (GPT-2 vocab, 50,257)
+│   │   └── generate.py          # Text generation from a checkpoint
+│   └── phase2/                  # Tokenization + Data Engineering
+│       ├── model.py             # copy of the transformer
+│       ├── train.py             # Training loop (own 32K vocab)
+│       ├── train_tokenizer.py   # Train BPE at 8K/16K/32K
+│       ├── evaluate_tokenizer.py# Compression ratio vs GPT-2
+│       └── bpe_*/               # Trained tokenizers (not in git)
 ├── data/
-│   ├── prepare.py        # Tokenizes OpenWebText into train.bin/val.bin
-│   ├── openwebtext/      # Raw dataset (~38GB, not in git)
-│   ├── train.bin         # Tokenized training data (~17GB, not in git)
-│   └── val.bin           # Tokenized validation data (not in git)
-├── checkpoints/          # Saved model weights (not in git)
-├── experiments/          # Scaling law logs and plots — Phase 3
+│   ├── openwebtext/             # Raw dataset (~38GB, not in git)
+│   ├── phase1/
+│   │   └── prepare.py           # Tokenize OWT with GPT-2 -> train/val.bin
+│   └── phase2/
+│       ├── sample_corpus.py     # Carve a text sample
+│       ├── filter.py            # Language + quality + dedup
+│       └── prepare.py           # Tokenize clean corpus with the 32K BPE
+├── checkpoints/
+│   ├── phase1/                  # Phase 1 model weights (not in git)
+│   └── phase2/                  # Phase 2 model weights (not in git)
 └── docs/
-    ├── plan.md           # Full 2-month roadmap with task breakdowns
-    └── phase1/
-        ├── how-transformers-work.html  # Visual explainer — start here
-        └── results.md                  # Model configs, val loss, generated output samples
+    ├── plan.md                  # Full 2-month roadmap
+    ├── phase1/                  # how-transformers-work.html + results.md
+    └── phase2/                  # tokenization.html + sprint-plan.md
 ```
 
 ---
