@@ -796,9 +796,11 @@
     <a class="nav-link" href="#q-why-not-gpt2">Why not GPT-2's tokenizer?<span class="badge">Q</span></a>
     <a class="nav-link" href="#q-data-matters">How much does quality matter?<span class="badge">Q</span></a>
     <a class="nav-link" href="#q-decisions">Why does this phase feel harder?<span class="badge">Q</span></a>
+    <a class="nav-link" href="#q-just-run-scripts">Is data cleaning just running scripts?<span class="badge">Q</span></a>
     <a class="nav-link" href="#q-128k-multilingual">Is 128K multilingual?<span class="badge">Q</span></a>
     <a class="nav-link" href="#q-code-mixing">Hinglish / code-mixing<span class="badge">Q</span></a>
     <a class="nav-link" href="#q-rust">Why Rust, not Python?<span class="badge">Q</span></a>
+    <a class="nav-link" href="#q-loss-barely-changed">Verify run: why did loss barely differ?<span class="badge">Q</span></a>
   </div>
 </nav>
 
@@ -1580,6 +1582,7 @@ vocab_size: int = <span class="num">16_000</span>       <span class="cm"># MUST 
     <div class="code-block">python data/prepare.py     <span class="cm"># rebuild bins with your tokenizer</span>
 python src/train.py        <span class="cm"># 1k-step sanity run</span></div>
     <p style="margin-top:14px">What you are checking: does the loss start high and fall smoothly, landing somewhere near the Phase 1 ballpark? If yes, the tokenizer, the bins, and the model config all agree, and you are ready for the long Phase 3 runs. If the loss is flat, explodes, or starts absurdly high, you have a vocab-size mismatch or a broken tokenizer file, which is exactly what this cheap run is meant to catch.</p>
+    <p style="margin-top:14px"><strong>Actual result</strong> (58.5M params, full 5,000-step run, not just the 1K sanity check): val loss fell smoothly from 10.55 → 5.23. See <a href="results.md">Phase 2 results</a> and the Q&amp;A below for why the raw number looks close to Phase 1's but isn't actually a fair comparison until you normalize for tokenizer differences.</p>
     <div class="analogy" style="margin-top:16px">
       <strong>Done with Phase 2:</strong> you now own a tokenizer tuned to your data and a clean, deduplicated dataset tokenized with it. Both feed straight into Phase 3, where the same pipeline runs at full scale for the scaling-law experiments.
     </div>
@@ -1651,6 +1654,24 @@ python src/train.py        <span class="cm"># 1k-step sanity run</span></div>
         <p>Phase 1 had a clear correct answer at each step. Attention is implemented a specific way. The loss function is cross-entropy. Cosine LR with linear warmup is standard. You could look at nanoGPT and verify you did it right.</p>
         <p>Phase 2 is full of judgment calls. What cutoff makes a document "too short"? How aggressive should the dedup threshold be? Which vocab size? There is no single correct answer. These decisions interact with your specific corpus, your model size, and what you want the model to be good at.</p>
         <p><strong>The practical answer:</strong> make a reasonable choice, run it, look at the data, adjust. You will iterate. That iteration is the learning. Phase 1 was about understanding a fixed system. Phase 2 is about building judgment.</p>
+      </div>
+    </div>
+
+    <div class="qa-block" id="q-just-run-scripts">
+      <div class="qa-q">Is data cleaning just running scripts? Take PII removal as an example.</div>
+      <div class="qa-a">
+        <p><strong>PII</strong> (Personally Identifiable Information) is anything that can identify a real person: names, emails, phone numbers, home addresses, SSNs, credit card numbers, IP addresses. Raw web-scraped text always has some of this leaking in, and production training pipelines run a pass to scrub it out before training.</p>
+        <p>And yes, mostly it is just running scripts. Emails, phone numbers, SSNs, and credit cards all have predictable formats, so regex catches them cleanly. Less structured PII (names, addresses) gets caught with a pre-trained named-entity-recognition model, commonly Microsoft's <code>presidio</code>. Nobody is inventing a new detection algorithm here. It is a solved, library-call problem, the same way tokenizing is a library call once you've trained the tokenizer.</p>
+        <div class="card" style="margin-top:12px;border-left:3px solid var(--accent)">
+          <h3 style="color:var(--accent-soft)">So where is the actual skill?</h3>
+          <p>Not in the detection code. It's in the judgment around it:</p>
+          <ul style="margin:8px 0 0 20px;line-height:1.7">
+            <li><strong>Threshold tuning</strong> — too aggressive and you redact real content ("Elon Musk announced..." is a public figure's name, not something to scrub; a stranger's home address in a forum post is). Too lax and real PII slips through.</li>
+            <li><strong>Context-dependent definitions</strong> — what counts as PII differs for a medical dataset vs. a general web scrape.</li>
+            <li><strong>Sampling and review</strong> — no automated pass catches everything, and you cannot manually review a billion documents, so you spot-check samples and estimate an error rate instead.</li>
+          </ul>
+        </div>
+        <p style="margin-top:12px">This is the same shape as the rest of Phase 2, not a special case: the library call (train a tokenizer, run a filter, run a NER model) is trivial. The judgment calls — what threshold, what to keep, what a sample of your actual output looks like — are where the real work is. That's also why removing PII was cut from this project's Phase 2: it is a compliance concern for models that get deployed to real users. A 50-100M model trained on a small local sample and never served to anyone doesn't carry that risk, so the judgment call here was "not worth the time," not "too hard to automate."</p>
       </div>
     </div>
 
@@ -1726,6 +1747,25 @@ python src/train.py        <span class="cm"># 1k-step sanity run</span></div>
           <h3 style="color:var(--accent-soft)">It is not unique to Rust</h3>
           <p>The real requirement is "compiled native code, not pure Python." OpenAI's <code>tiktoken</code> is also written in Rust. Google's <code>SentencePiece</code> is written in C++. The common thread is keeping the hot loop out of the interpreter.</p>
         </div>
+      </div>
+    </div>
+
+    <div class="qa-block" id="q-loss-barely-changed">
+      <div class="qa-q">The Phase 2 verify run landed at val loss 5.23, almost the same as Phase 1's 5.24. Doesn't that mean nothing changed?</div>
+      <div class="qa-a">
+        <p>The two numbers looking close is a coincidence, not a result. Loss is measured per token, and Phase 1 (GPT-2's tokenizer) and Phase 2 (your own 32K tokenizer) chop the same text into different-sized tokens. Comparing raw loss across two different tokenizers is comparing two different units.</p>
+        <p>The actual compression numbers, measured on held-out text neither tokenizer was trained on:</p>
+        <div class="code-block">GPT-2  (50,257)  227.2 tok / 1k chars   (baseline)
+yours  (32,000)  230.0 tok / 1k chars   (-1.2% vs GPT-2, <span class="cm">slightly worse</span>)</div>
+        <p>Your 32K tokenizer takes marginally <em>more</em> tokens to represent the same text than GPT-2's — it doesn't compress better. That part is a clean, standalone finding: both tokenizers were run over the same held-out text, no model involved, no confound.</p>
+        <p>But converting the two <em>training runs</em> to bits-per-byte is a different claim, and this one is confounded:</p>
+        <div class="code-block">Phase 1 (GPT-2 tokenizer):  1.718 bits/byte
+Phase 2 (your 32K tokenizer): 1.736 bits/byte</div>
+        <div class="card" style="margin-top:12px;border-left:3px solid var(--red, #f87171)">
+          <h3 style="color:#f87171">Don't over-read this one</h3>
+          <p>Phase 1 trained on the full OpenWebText corpus (~8.5B tokens). Phase 2's <code>train.bin</code> came from the 200K-document sample <code>sample_corpus.py</code> pulls — a corpus explicitly sized "enough for a tokenizer," reused as the actual training corpus. After tokenizing it's only ~214M tokens: <strong>about 40x smaller</strong> than what Phase 1 trained on. So the two runs differ in two ways at once — tokenizer compression (a real, small ~1.2% effect) and training-corpus size (a ~40x difference, uncontrolled). A 0.018 bits/byte gap is fully explainable by corpus size alone. This result does not show the tokenizer hurt training — it only supports the standalone compression comparison above. A clean test would re-tokenize the <em>full</em> corpus with the 32K tokenizer and compare on equal data volume.</p>
+        </div>
+        <p style="margin-top:12px">The bigger lesson isn't really about tokenizers — it's that a plausible-looking number (raw loss nearly matching) can hide two different problems at once (unit mismatch <em>and</em> a confounded comparison), and both need to be caught before trusting the conclusion.</p>
       </div>
     </div>
   </section>

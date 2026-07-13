@@ -31,3 +31,6 @@ wandb/
 # misc
 .DS_Store
 *.swp
+
+# local claude context/settings (not for the public repo)
+.claude/

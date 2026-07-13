@@ -44,27 +44,26 @@ Phase 5: Evaluation + Feedback    →  Week 7-8     (~40 hrs)
 
 ---
 
-## Phase 2: Tokenizer + Data Engineering — "Garbage In, Garbage Out"
+## Phase 2: Tokenizer + Data Engineering — "Garbage In, Garbage Out" ✓ COMPLETE
 
 **Objective:** Train your own tokenizer and build a data pipeline. This is 60% of the work in real ML.
 
-### Task 2.1: Train a BPE tokenizer
-- Use HuggingFace `tokenizers` library (Rust-backed, fast)
-- Train on 10-20GB of text (C4, FineWeb-Edu, or The Pile sample)
-- Vocabulary sizes to try: 8K, 16K, 32K
-- Compare compression ratios (tokens per word) vs GPT-2 tokenizer
-- Save tokenizer, test encode/decode roundtrip
+### Task 2.1: Train a BPE tokenizer — done
+- [x] Trained BPE tokenizers at 8K/16K/32K on filtered OpenWebText sample (`src/phase2/train_tokenizer.py`)
+- [x] Compared compression vs GPT-2 tokenizer on held-out text (`src/phase2/evaluate_tokenizer.py`) — see `docs/phase2/results.md`
+- [x] Picked 32K vocab, re-tokenized the clean corpus
 
-### Task 2.2: Data filtering pipeline
-- Build a pipeline that:
-  - Removes non-English text (fastText language detection)
-  - Deduplicates (MinHash LSH or exact n-gram dedup)
-  - Filters by quality (perplexity score using small reference model, length heuristics)
-  - Removes PII (regex + presidio)
-- Tools: `datatrove`, `text-dedup`, or roll your own with `datasets` + `multiprocessing`
-- **Key learning:** Look at the data. Actually open 100 random samples.
+### Task 2.2: Data filtering pipeline — done
+- [x] fastText language-ID (English only, confidence > 0.65)
+- [x] Quality heuristics (length, symbol/digit ratio)
+- [x] Exact dedup (content hash)
+- **Reviewed and confirmed out of scope (2026-07-13):** PII removal and synthetic-data generation teach nothing specific to Phase 2's data-engineering goal — PII removal is a compliance concern, synthetic data via a teacher model is Phase 4's actual lesson. Near-dedup (MinHash LSH) is the one with real unexplored conceptual content (approximate similarity at scale, distinct from exact-hash dedup) but isn't blocking; revisit only if useful later.
 
-### Task 2.3: Synthetic data generation with teacher model
+**Key finding:** the 32K tokenizer trained here is marginally *worse* than GPT-2's at compression on held-out web text (-1.2%) — that's a clean, standalone result. The training run's bits-per-byte also came out slightly worse (1.736 vs 1.718), but that comparison is confounded: Phase 2's `train.bin` was built from a ~214M-token sample (scoped for tokenizer training, not LM training) vs Phase 1's full ~8.5B-token corpus, a ~40x difference in training data that alone could explain the gap. Don't read the training-run number as evidence the tokenizer hurt learning — only the tokenizer-only compression comparison supports that. Full breakdown in `docs/phase2/results.md`.
+
+**Note on process:** Task 2.1's scripts (tokenizer training, evaluation) and Task 2.2's filter script were written by Claude in a prior session rather than hand-written, which is against this file's own learning-boundary rule for tokenizer training. Concepts were reviewed and understood afterward, but flagging this here for accuracy.
+
+### Task 2.3: Synthetic data generation with teacher model — descoped to Phase 4
 - **Teacher option 1 (local):** Qwen 3.6 35B MoE — runs 4-bit on your 5070 Ti. Use when you're not training.
 - **Teacher option 2 (API):** DeepSeek Flash v4 — fast, cheap, good quality. Use when GPU is busy training.
 - **Teacher option 3 (cloud):** RunPod 5090 for heavy batch generation (~10 hrs, borrow when needed)
@@ -74,18 +73,18 @@ Phase 5: Evaluation + Feedback    →  Week 7-8     (~40 hrs)
   - **Text continuations:** Seed with high-quality text, let teacher continue
 - Aim for 50K-200K high-quality synthetic samples
 
-### Task 2.4: Dataset mixing
-- Combine: filtered web text (80%) + synthetic (15%) + curated (5% — books, wiki, code)
-- Shuffle, tokenize, pack sequences for efficient training
-- Save as HuggingFace dataset or memory-mapped binary files
+### Task 2.4: Dataset mixing — descoped to Phase 4
+Depends on synthetic data from Task 2.3, so it moves with it. Phase 2's deliverable is the filtered web-text corpus alone; the 80/15/5 mix happens once synthetic + curated data exist.
 
-**Deliverable:** A tokenizer you trained + a clean, deduplicated, mixed dataset ready for training.
+**Deliverable — met:** a tokenizer you trained (32K BPE) + a clean, deduplicated dataset tokenized with it, verified end-to-end with a training run. See `docs/phase2/results.md`.
 
 ---
 
 ## Phase 3: Scaling Law Experiments — "Chinchilla Was Right"
 
 **Objective:** Run controlled experiments to understand model size vs data size vs loss.
+
+**Carried over from Phase 2:** re-tokenize the full OpenWebText corpus with the 32K BPE tokenizer (Phase 2 only tokenized a small ~214M-token sample). This phase's runs need full-corpus token counts anyway, so this becomes step 1 of data prep here rather than a separate task — and it incidentally gives a clean, corpus-matched Phase 1 vs Phase 2 tokenizer comparison (see `docs/phase2/results.md` for why the Phase 2 result wasn't conclusive on its own).
 
 ### The Experiment Grid
 

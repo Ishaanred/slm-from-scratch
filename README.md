@@ -13,8 +13,8 @@ A hands-on, end-to-end curriculum covering every step of the LLM training pipeli
 | Phase | Status |
 |-------|--------|
 | 1. NanoGPT — build a transformer from scratch | **Complete** |
-| 2. Tokenizer + Data Engineering | **Up next** |
-| 3. Scaling Law Experiments | Not started |
+| 2. Tokenizer + Data Engineering | **Complete** |
+| 3. Scaling Law Experiments | **Up next** |
 | 4. Knowledge Distillation | Not started |
 | 5. Evaluation & Feedback Loop | Not started |
 
@@ -27,6 +27,13 @@ A hands-on, end-to-end curriculum covering every step of the LLM training pipeli
 - [x] First training run — 5K steps, val loss 5.12, ~15 min on RTX 5070 Ti
 - [x] Text generation — `python src/generate.py --prompt "..."`
 - [x] Published the 77M checkpoint to Hugging Face: [redredredredredred/slm-from-scratch-77m](https://huggingface.co/redredredredredred/slm-from-scratch-77m)
+
+**Phase 2 — complete:**
+- [x] Train BPE tokenizers at 8K/16K/32K — see [`docs/phase2/tokenization.html`](docs/phase2/tokenization.html)
+- [x] Filtering pipeline: fastText language-ID, quality heuristics, exact dedup
+- [x] Re-tokenize the clean corpus with the 32K tokenizer
+- [x] Verification run — 58.5M params, 5K steps, val loss 5.23
+- [x] Results + honest tokenizer-compression comparison — see [`docs/phase2/results.md`](docs/phase2/results.md)
 
 ---
 
@@ -48,11 +55,13 @@ Build a GPT-style transformer in ~300 lines of PyTorch and train it on OpenWebTe
 ---
 
 ### Phase 2 — Tokenizer + Data Engineering (Weeks 2-3)
-Train your own BPE tokenizer. Build a data pipeline that deduplicates, filters by quality, removes PII, and generates synthetic data using Qwen 35B MoE as a teacher.
+Train your own BPE tokenizer. Build a data pipeline that filters by quality and exact-dedups the corpus.
 
 **You'll understand:** why "garbage in, garbage out" is the dominant failure mode in LLM training.
 
-**Deliverable:** A trained tokenizer + a clean, mixed dataset ready for experiments.
+**Deliverable:** A trained tokenizer (32K BPE) + a clean, filtered dataset, verified end-to-end with a training run. See [`docs/phase2/results.md`](docs/phase2/results.md) for the actual numbers.
+
+**Scoped out, reviewed 2026-07-13:** PII removal and synthetic-data generation (Qwen 35B MoE teacher) aren't specific to this phase's learning goal — PII removal is a compliance concern, and synthetic data via a teacher model is Phase 4's actual lesson (distillation). Near-dedup (MinHash LSH) was also skipped; only exact-hash dedup ran. None of this blocks Phase 3.
 
 ---
 
@@ -196,3 +205,4 @@ slm-from-scratch/
 - [`docs/plan.md`](docs/plan.md) — full 2-month roadmap with task breakdowns.
 - [`docs/phase2/sprint-plan.md`](docs/phase2/sprint-plan.md) — Phase 2 sprint plan: tokenizer training + data filtering.
 - [`docs/phase2/tokenization.html`](docs/phase2/tokenization.html) — full Phase 2 explainer: why Phase 2 differs from Phase 1, BPE step by step, vocab size tradeoffs, byte-level tokenization, compression ratio, the HF tokenizers library, data quality, and the filtering pipeline.
+- [`docs/phase2/results.md`](docs/phase2/results.md) — Phase 2 results: tokenizer compression comparison vs GPT-2, the verification training run, and the bits-per-byte analysis of why the raw loss numbers looked deceptively close.
