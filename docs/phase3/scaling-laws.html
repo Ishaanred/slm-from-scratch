@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 3: Scaling Law Experiments</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --sidebar-w: 240px;
+    --bg: #0f1117;
+    --surface: #1e293b;
+    --border: #1e293b;
+    --border-light: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --dim: #64748b;
+    --accent: #818cf8;
+    --accent-soft: #a5b4fc;
+    --green: #34d399;
+    --pink: #f472b6;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --purple: #c084fc;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+    padding-left: var(--sidebar-w);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    background: #0b0e15;
+    padding: 24px 0 40px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-logo {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .sidebar-logo span {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .sidebar-logo p {
+    font-size: 0.72rem;
+    color: var(--dim);
+    margin-top: 2px;
+  }
+
+  .nav-group { margin-bottom: 6px; }
+
+  .nav-group-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dim);
+    padding: 10px 20px 4px;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 20px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+
+  .nav-link:hover {
+    color: var(--text);
+    background: rgba(129,140,248,0.06);
+  }
+
+  .nav-link.active {
+    color: var(--accent-soft);
+    border-left-color: var(--accent);
+    background: rgba(129,140,248,0.08);
+  }
+
+  .badge {
+    font-size: 0.62rem;
+    background: #1a2e1a;
+    color: #86efac;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-weight: 600;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .badge.todo { background: #3b1c00; color: #fdba74; }
+
+  /* sidebar scrollbar (match Phase 1/2) */
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+  /* PHASE SWITCHER (dropdown) */
+  .phase-dd { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px; }
+  .phase-dd > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 9px; padding: 8px 20px; font-size: 0.8rem; font-weight: 700; color: var(--accent-soft); }
+  .phase-dd > summary::-webkit-details-marker { display: none; }
+  .phase-dd > summary .chev { margin-left: auto; color: var(--dim); font-size: 0.65rem; transition: transform 0.15s; }
+  .phase-dd[open] > summary .chev { transform: rotate(90deg); }
+  .phase-dd-body { padding-top: 4px; }
+  .pnum { display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px; border-radius: 5px; background: #1e293b; color: var(--dim); font-size: 0.68rem; font-weight: 700; flex-shrink: 0; }
+  .phase-dd > summary .pnum { background: #312e81; color: var(--accent-soft); }
+  .nav-link.phase { display: flex; align-items: center; gap: 9px; font-weight: 600; }
+  .nav-link.phase.active { color: var(--accent-soft); border-left-color: var(--accent); background: rgba(129,140,248,0.08); }
+  .nav-link.phase.active .pnum { background: #312e81; color: var(--accent-soft); }
+  .nav-link.phase.soon { color: var(--dim); cursor: default; }
+  .nav-link.phase.soon:hover { background: transparent; color: var(--dim); }
+
+  /* MAIN */
+  .main {
+    margin: 0 auto;
+    width: 100%;
+    max-width: 1180px;
+    padding: 0 56px 120px;
+  }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    body { padding-left: 0; }
+    .main { padding: 0 20px 80px; }
+  }
+
+  /* HERO */
+  .hero {
+    padding: 64px 0 40px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .hero-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  .hero h1 {
+    font-size: 2.4rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, #818cf8, #a78bfa, #f472b6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1.2;
+    margin-bottom: 14px;
+  }
+
+  .hero p {
+    font-size: 1rem;
+    color: var(--muted);
+    max-width: 560px;
+  }
+
+  /* SECTIONS */
+  .section { padding-top: 72px; }
+
+  .section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .section h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 14px;
+    scroll-margin-top: 24px;
+  }
+
+  .section p {
+    color: var(--muted);
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+  }
+
+  .section p strong { color: var(--text); }
+
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.84em;
+    color: var(--accent-soft);
+    background: var(--surface);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* ANALOGY */
+  .analogy {
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin-top: 18px;
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+
+  .analogy strong { color: var(--accent-soft); }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 18px;
+    margin-top: 14px;
+  }
+
+  .card h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-bottom: 6px;
+  }
+
+  .card p { font-size: 0.875rem; color: var(--muted); margin: 0; }
+
+  /* PIPELINE */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+  }
+
+  .pipe-box {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-size: 0.83rem;
+    color: var(--text);
+    text-align: center;
+    flex: 1;
+    min-width: 90px;
+  }
+
+  .pipe-box.hi-orange {
+    background: var(--surface);
+    border-color: var(--accent);
+    color: var(--accent-soft);
+  }
+
+  .pipe-arrow { color: #475569; font-size: 1.1rem; flex-shrink: 0; }
+
+  /* COMPARE PHASE GRID */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 20px;
+  }
+
+  .compare-card {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 18px;
+  }
+
+  .compare-card.phase2 { border-top: 3px solid var(--green); }
+  .compare-card.phase3 { border-top: 3px solid var(--purple); }
+
+  .compare-card .phase-tag {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .compare-card.phase2 .phase-tag { color: var(--green); }
+  .compare-card.phase3 .phase-tag { color: var(--purple); }
+
+  .compare-card h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 8px;
+  }
+
+  .compare-card ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .compare-card ul li {
+    font-size: 0.82rem;
+    color: var(--muted);
+    padding-left: 14px;
+    position: relative;
+  }
+
+  .compare-card ul li::before {
+    content: '·';
+    position: absolute;
+    left: 0;
+    color: var(--dim);
+  }
+
+  @media (max-width: 700px) {
+    .compare-grid { grid-template-columns: 1fr; }
+  }
+
+  /* LOOP STEPS */
+  .loop-steps {
+    display: flex;
+    flex-direction: column;
+    margin-top: 18px;
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .loop-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .loop-step:last-child { border-bottom: none; }
+
+  .loop-step .num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 2px;
+    background: #312e81;
+    color: var(--accent-soft);
+  }
+
+  .loop-step .body h4 { font-size: 0.9rem; font-weight: 600; color: #f1f5f9; margin-bottom: 3px; }
+  .loop-step .body p { font-size: 0.82rem; color: var(--dim); margin: 0; }
+
+  /* TABLE */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 18px;
+    font-size: 0.84rem;
+  }
+
+  th {
+    background: var(--surface);
+    color: var(--muted);
+    text-align: left;
+    padding: 9px 13px;
+    font-weight: 600;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  td {
+    padding: 9px 13px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+
+  td:first-child { color: var(--muted); }
+  tr:last-child td { border-bottom: none; }
+
+  .good { color: var(--green); }
+  .bad  { color: var(--red); }
+  .mid  { color: var(--yellow); }
+
+  .grid-table td.run-cell {
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+  }
+  .grid-table td.run-cell.empty { color: var(--dim); font-family: inherit; font-weight: 400; }
+  .grid-table td.ratio-lo { background: rgba(248,113,113,0.08); }
+  .grid-table td.ratio-mid { background: rgba(251,191,36,0.08); }
+  .grid-table td.ratio-hi { background: rgba(52,211,153,0.08); }
+
+  /* CODE BLOCK */
+  .code-block {
+    background: #0b0e15;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.82rem;
+    overflow-x: auto;
+    margin-top: 14px;
+    line-height: 1.7;
+  }
+
+  .cm  { color: var(--dim); font-style: italic; }
+  .num { color: #79c0ff; }
+
+  /* SPOILER */
+  .spoiler { margin-top: 14px; }
+
+  .spoiler-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: var(--dim);
+    user-select: none;
+    padding: 4px 0;
+    border: none;
+    background: none;
+  }
+
+  .spoiler-toggle:hover { color: var(--muted); }
+  .spoiler-toggle .sym { font-size: 0.9rem; }
+
+  .spoiler-body {
+    display: none;
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-top: 8px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  .spoiler-body.open { display: block; }
+
+  /* Q&A */
+  .qa-block {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+  }
+
+  .qa-q {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .qa-a { font-size: 0.875rem; color: var(--muted); line-height: 1.75; }
+  .qa-a strong { color: var(--text); }
+  .qa-a p { margin-top: 8px; }
+  .qa-a p:first-child { margin-top: 0; }
+
+  /* DIVIDER */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin-top: 64px;
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <span>SLM from Scratch</span>
+    <p>Phase 3: Scaling Laws</p>
+  </div>
+
+  <details class="nav-group phase-dd">
+    <summary><span class="pnum">3</span>Phase 3 · Scaling Laws<span class="chev">▶</span></summary>
+    <div class="phase-dd-body">
+      <a class="nav-link phase" href="../phase1/how-transformers-work.html"><span class="pnum">1</span>Transformers</a>
+      <a class="nav-link phase" href="../phase2/tokenization.html"><span class="pnum">2</span>Tokenization + Data</a>
+      <a class="nav-link phase active" href="#roadmap"><span class="pnum">3</span>Scaling Laws</a>
+      <span class="nav-link phase soon"><span class="pnum">4</span>Distillation</span>
+      <span class="nav-link phase soon"><span class="pnum">5</span>Evaluation</span>
+    </div>
+  </details>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Start Here</div>
+    <a class="nav-link" href="#roadmap">Phase 3 start to finish</a>
+    <a class="nav-link" href="#phase-shift">What changed from Phase 2</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Concepts</div>
+    <a class="nav-link" href="#what-is-scaling">What is a scaling law</a>
+    <a class="nav-link" href="#flops">FLOPs, in plain terms</a>
+    <a class="nav-link" href="#chinchilla">The Chinchilla rule</a>
+    <a class="nav-link" href="#under-over">Undertrained vs overtrained</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">The Experiment</div>
+    <a class="nav-link" href="#the-grid">The 3 training runs</a>
+    <a class="nav-link" href="#carried-over">Carried over from Phase 2</a>
+    <a class="nav-link" href="#build">How this will actually run</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Q&amp;A</div>
+    <a class="nav-link" href="#q-why-not-biggest">Why not just train the biggest model?<span class="badge">Q</span></a>
+    <a class="nav-link" href="#q-overtrained-on-purpose">Isn't overtraining "wasteful"?<span class="badge">Q</span></a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <div class="hero">
+    <div class="hero-eyebrow">Phase 3: Scaling Law Experiments</div>
+    <h1>How big should<br>the model actually be?</h1>
+    <p>Phase 1 proved the architecture works. Phase 2 decided what goes in. Phase 3 asks the question every real training run has to answer before it starts: for the compute you have, what's the best split between model size and data size? Not started yet — this page is the map for when it does.</p>
+    <div class="analogy" style="margin-top:20px">
+      <strong>Not a today task:</strong> this phase is 3 training runs (trimmed from an original 10-run design), ~24-25 hours of GPU time total — queued back-to-back and left running unattended, ~2-2.5 days of continuous wall-clock time. See <a href="sprint-plan.md" style="color:var(--accent-soft)">docs/phase3/sprint-plan.md</a> for the concrete step-by-step.
+    </div>
+  </div>
+
+  <!-- ROADMAP -->
+  <section class="section" id="roadmap">
+    <div class="section-label">Start here</div>
+    <h2>Phase 3 from start to finish</h2>
+    <p>One pipeline, same as the last two phases: prep the data, build the harness, run the grid, read the results. Each step feeds the next.</p>
+
+    <div class="pipeline" style="margin-top:22px">
+      <div class="pipe-box">Re-tokenize full corpus</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box hi-orange">Parameterize the harness</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box">Pick configs</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box">Run the grid (10x)</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box">Plot + interpret</div>
+    </div>
+
+    <div class="card" style="margin-top:20px;border-left:3px solid var(--purple)">
+      <h3 style="color:#d8b4fe">What "done" looks like</h3>
+      <p>Loss-vs-FLOPs and loss-vs-tokens plots across all 10 runs, and a read on whether your own data follows Chinchilla's compute-optimal curve. The plotting is infrastructure Claude can help with; reading what the curves mean is the part that's explicitly yours — see this project's <code>CLAUDE.md</code>.</p>
+    </div>
+  </section>
+
+  <!-- PHASE SHIFT -->
+  <section class="section" id="phase-shift">
+    <div class="section-label">Context</div>
+    <h2>What changed from Phase 2</h2>
+    <p>Phase 1 was "does the architecture work." Phase 2 was "is the data any good." Phase 3 is the first phase that's actually experimental — you're not building one thing, you're running the same thing many times under different conditions and comparing the outcomes.</p>
+
+    <div class="compare-grid">
+      <div class="compare-card phase2">
+        <div class="phase-tag">Phase 2</div>
+        <h3>Build once, verify once</h3>
+        <ul>
+          <li>One tokenizer, one filtering pipeline</li>
+          <li>One training run to confirm the pipeline works</li>
+          <li>Success = "does it run without breaking"</li>
+        </ul>
+      </div>
+      <div class="compare-card phase3">
+        <div class="phase-tag">Phase 3</div>
+        <h3>Same harness, many conditions</h3>
+        <ul>
+          <li>Same architecture, 3 sizes × up to 4 token counts</li>
+          <li>10 separate training runs, hours each</li>
+          <li>Success = "what does the pattern across runs say"</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT IS A SCALING LAW -->
+  <section class="section" id="what-is-scaling">
+    <div class="section-label">Concept</div>
+    <h2>What is a scaling law</h2>
+    <p>A scaling law is just an observed, fairly predictable relationship: as you increase model size and training data together, loss falls in a smooth, roughly power-law curve. Not a hard physical law — an empirical pattern that's held up remarkably well across many labs, architectures, and datasets since it was first published.</p>
+
+    <div class="analogy">
+      <strong>Analogy:</strong> Baking a cake at different oven sizes. A bigger oven (bigger model) can produce more per batch, but only if you also bring proportionally more batter (more data). A huge oven with a thimble of batter wastes most of its capacity. A tiny oven with a truck of batter can't use most of what you brought. Scaling laws are the recipe ratio that keeps oven size and batter amount in balance.
+    </div>
+
+    <p style="margin-top:16px">Why this matters practically: without a scaling law, "how big should my model be" is a guess. With one, it's a calculation — given a compute budget, there's a predictable best split between parameters and tokens, and deviating from it in either direction wastes compute.</p>
+  </section>
+
+  <!-- FLOPS -->
+  <section class="section" id="flops">
+    <div class="section-label">Concept</div>
+    <h2>FLOPs, in plain terms</h2>
+    <p>FLOPs (floating-point operations) are just the unit for "how much raw compute did this run cost," independent of what GPU you happened to run it on. It's what lets you compare a run on your 5070 Ti to a run OpenAI did on a cluster — same unit, different hardware.</p>
+    <p>For a transformer, compute cost scales with both model size and how much data you push through it: double the parameters or double the tokens, and you've roughly doubled the FLOPs spent. This is why "loss vs FLOPs" is the x-axis scaling law plots use instead of "loss vs training time" — time depends on your specific GPU, FLOPs doesn't.</p>
+
+    <div class="spoiler">
+      <button class="spoiler-toggle" onclick="this.nextElementSibling.classList.toggle('open')">
+        <span class="sym">∑</span> The actual formula
+      </button>
+      <div class="spoiler-body">
+        A commonly used approximation for a transformer's training compute is <code>C ≈ 6 · N · D</code>, where <code>N</code> is the parameter count and <code>D</code> is the number of training tokens. The 6 accounts for one forward pass (≈2 FLOPs per parameter per token) plus backward pass (≈4 FLOPs per parameter per token, roughly double the forward cost). It's an approximation — attention has its own cost that scales with sequence length separately, but for typical context lengths relative to model size, the <code>6ND</code> term dominates.
+      </div>
+    </div>
+  </section>
+
+  <!-- CHINCHILLA -->
+  <section class="section" id="chinchilla">
+    <div class="section-label">Concept</div>
+    <h2>The Chinchilla rule</h2>
+    <p>In 2022, DeepMind ran a large sweep of models at different size/data combinations (the "Chinchilla" paper) and found that most large models up to that point were oversized relative to how much data they'd been trained on. Their headline result: for a fixed compute budget, the best split is roughly <strong>20 tokens of training data per parameter</strong>.</p>
+
+    <div class="analogy">
+      <strong>Analogy:</strong> A student who spent all semester picking an expensive textbook (bigger model) but barely opened it (little data) does worse on the exam than a student with a cheaper textbook (smaller model) who actually read it cover to cover several times (more data), for the same total study hours (same compute).
+    </div>
+
+    <div class="card" style="margin-top:16px;border-left:3px solid var(--purple)">
+      <h3 style="color:#d8b4fe">Why this project cares</h3>
+      <p>The whole point of Phase 3's grid is to check this ratio against your own architecture and your own data, not just take DeepMind's number on faith. Some cells in the grid below sit well under the 20x ratio on purpose — that's what "undertrained" looks like on a plot, and part of the point is seeing it happen.</p>
+    </div>
+  </section>
+
+  <!-- UNDER VS OVER -->
+  <section class="section" id="under-over">
+    <div class="section-label">Concept</div>
+    <h2>Undertrained vs overtrained</h2>
+    <p><strong>Undertrained</strong> means: relative to its parameter count, the model hasn't seen enough tokens to reach the loss its size is capable of. More parameters without more data mostly buys unused capacity. This is what happened with Phase 1's 77M vs 50M comparison — same ~80M tokens, and the bigger model came out worse, because 80M tokens wasn't enough for either, and especially not for the bigger one.</p>
+    <p><strong>Overtrained</strong> (relative to Chinchilla-optimal) means: the model has seen more tokens per parameter than the 20x ratio suggests is compute-optimal. It still improves, just with diminishing returns per token — you're paying more training compute than strictly necessary for the loss you get.</p>
+
+    <div class="card" style="margin-top:16px;border-left:3px solid var(--yellow)">
+      <h3 style="color:var(--yellow)">Overtraining isn't automatically bad</h3>
+      <p>Chinchilla-optimal minimizes training compute for a target loss. It says nothing about inference cost. A smaller, overtrained model is cheaper to run for the rest of its life than a larger, compute-optimal one at the same loss — which is exactly why many production models (Llama included) are deliberately trained well past the 20x ratio. See the Q&amp;A below.</p>
+    </div>
+  </section>
+
+  <!-- THE GRID -->
+  <section class="section" id="the-grid">
+    <div class="section-label">The experiment</div>
+    <h2>The 3 training runs</h2>
+    <p>Same architecture as Phases 1 and 2 (the hand-written transformer). Started as a 10-run grid across 3 sizes, trimmed to 6, trimmed again to 3 — see the card below for why a bigger grid wasn't actually buying more here. Three runs, two comparisons.</p>
+
+    <table>
+      <tr>
+        <th>Run</th>
+        <th>Model</th>
+        <th>Tokens</th>
+        <th>Tokens/param</th>
+        <th>What it answers</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>75M</td>
+        <td>500M</td>
+        <td class="mid">~7.2x</td>
+        <td>Undertrained end of the 75M curve</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>75M</td>
+        <td>2B</td>
+        <td class="good">~28.8x</td>
+        <td>Near/above Chinchilla-optimal end of the 75M curve</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>150M</td>
+        <td>500M</td>
+        <td class="bad">~3.7x</td>
+        <td>Cross-size comparison at matched, scarce data</td>
+      </tr>
+    </table>
+
+    <p style="margin-top:14px;font-size:0.8rem;color:var(--dim)">Run 1 vs Run 2: same model, more data — the within-size trend, whether loss keeps improving as the 75M model sees more tokens. Run 1 vs Run 3: same data, more parameters — the direct callback to Phase 1's own finding that a bigger model can lose to a smaller one when data is scarce, now checked at a different scale.</p>
+
+    <div class="card" style="margin-top:16px;border-left:3px solid var(--orange)">
+      <h3 style="color:var(--orange)">Why not a bigger grid</h3>
+      <p>The training harness reuses one fixed learning rate and config across every model size instead of retuning per size, which is what real scaling-law studies (including Chinchilla's own) actually do. Combined with a training corpus that's still relatively modest, a 6-10 run grid was never going to produce a textbook-clean curve here — it would mostly add noise-prone data points at real electricity cost (the original 10-run design was an estimated 80-120 GPU hours, ~22-34 kWh). Three runs answering two specific, well-defined questions carries the same practical value (informing Phase 4's model size choice) and the same portfolio value (showing you understand FLOPs and compute tradeoffs, and can reason about a confound) at roughly a tenth of the compute.</p>
+    </div>
+  </section>
+
+  <!-- CARRIED OVER -->
+  <section class="section" id="carried-over">
+    <div class="section-label">Before the grid</div>
+    <h2>Carried over from Phase 2</h2>
+    <p>Phase 2's actual training run used a small ~214M-token filtered sample, sized for training the tokenizer rather than the language model. Phase 3's runs need real token counts up to 2B, so the full OpenWebText corpus (~8.5B tokens) needs to be re-tokenized with the 32K BPE tokenizer before any of the grid can run.</p>
+
+    <div class="analogy">
+      <strong>Bonus:</strong> doing this also finally gives a clean, corpus-matched comparison between Phase 1's tokenizer (GPT-2) and Phase 2's (your own 32K BPE) — something Phase 2 couldn't produce on its own because its training corpus was ~40x smaller than Phase 1's. See <a href="../phase2/results.md" style="color:var(--accent-soft)">Phase 2 results</a> for why that comparison was inconclusive.
+    </div>
+  </section>
+
+  <!-- BUILD -->
+  <section class="section" id="build">
+    <div class="section-label">Build it</div>
+    <h2>How this will actually run</h2>
+    <p>Full breakdown in <a href="sprint-plan.md" style="color:var(--accent-soft)">docs/phase3/sprint-plan.md</a>. Short version:</p>
+
+    <div class="loop-steps" style="margin-top:18px">
+      <div class="loop-step">
+        <div class="num">1</div>
+        <div class="body">
+          <h4>Re-tokenize the full corpus</h4>
+          <p>Revive the full-corpus version of <code>data/phase2/prepare.py</code> (exists in git history) pointed at <code>data/openwebtext/</code> instead of the small sample.</p>
+        </div>
+      </div>
+      <div class="loop-step">
+        <div class="num">2</div>
+        <div class="body">
+          <h4>Parameterize the harness</h4>
+          <p><code>src/phase2/train.py</code>'s <code>TrainConfig</code> is currently one hardcoded size. Needs CLI/config-driven <code>n_layer</code>/<code>n_head</code>/<code>n_embd</code>/<code>max_iters</code> so the 3 runs don't mean 3 copy-pasted files.</p>
+        </div>
+      </div>
+      <div class="loop-step">
+        <div class="num">3</div>
+        <div class="body">
+          <h4>Configs confirmed — VRAM checked</h4>
+          <p>Measured directly on the 5070 Ti: 75M → 69.4M params / 4.94GB peak, 150M → 135.0M params / 6.70GB peak (batch=8, block=1024). Both fit with room to spare — VRAM was never the constraint here, wall-clock time is. See <a href="sprint-plan.md" style="color:var(--accent-soft)">sprint-plan.md</a> for the full numbers.</p>
+        </div>
+      </div>
+      <div class="loop-step">
+        <div class="num">4</div>
+        <div class="body">
+          <h4>Run, then plot</h4>
+          <p>Fire-and-forget, one run at a time, spread across days. Plotting loss-vs-FLOPs and loss-vs-tokens across all 3 comes last — and reading what the curves say is yours to do.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Q&A -->
+  <hr class="divider">
+
+  <section class="section" id="q-why-not-biggest">
+    <div class="section-label">Q&amp;A</div>
+    <h2>Questions</h2>
+
+    <div class="qa-block">
+      <div class="qa-q">Why not just train the biggest model your GPU can fit?</div>
+      <div class="qa-a">
+        <p>Because compute is the actual constraint, not VRAM. Your 5070 Ti can probably fit a 300M model in memory. But fitting isn't the same as training it well — if you only have enough compute budget for, say, 500M tokens, a 300M model at that token count is badly undertrained (ratio ~1.7x, far under the ~20x rule), while a 75M model at the same compute budget could see far more tokens per parameter and actually converge properly.</p>
+        <p>This is the entire point of the grid: "biggest model that fits" and "best model for your compute budget" are frequently different answers, and the only way to know which regime you're in is to actually plot loss against FLOPs, not just parameter count.</p>
+      </div>
+    </div>
+
+    <div class="qa-block" id="q-overtrained-on-purpose">
+      <div class="qa-q">If Chinchilla says the optimal ratio is 20x, isn't training past that wasteful?</div>
+      <div class="qa-a">
+        <p>Wasteful for training compute, not necessarily overall. Chinchilla's result answers one specific question: for a fixed training compute budget, what size/data split gets you the lowest loss. It says nothing about what happens after training — how much it costs to actually run the model for the next year serving requests.</p>
+        <p>A smaller model trained on far more than its "optimal" 20x tokens (Llama 2 and Llama 3 both do this deliberately) spends more compute in training than Chinchilla-optimal would, in exchange for a permanently cheaper, faster model to deploy. For a company serving billions of requests, that trade is usually worth it. For a from-scratch learning experiment where you're not deploying anything, Chinchilla-optimal is the more informative number to check your own results against — but it's worth knowing real production labs routinely train past it on purpose, for a reason that has nothing to do with the training run itself.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  const links = document.querySelectorAll('.nav-link:not(.phase)');
+  const sections = document.querySelectorAll('section[id]');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`.nav-link[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-15% 0px -70% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

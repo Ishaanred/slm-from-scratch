@@ -86,15 +86,19 @@ Depends on synthetic data from Task 2.3, so it moves with it. Phase 2's delivera
 
 **Carried over from Phase 2:** re-tokenize the full OpenWebText corpus with the 32K BPE tokenizer (Phase 2 only tokenized a small ~214M-token sample). This phase's runs need full-corpus token counts anyway, so this becomes step 1 of data prep here rather than a separate task — and it incidentally gives a clean, corpus-matched Phase 1 vs Phase 2 tokenizer comparison (see `docs/phase2/results.md` for why the Phase 2 result wasn't conclusive on its own).
 
-### The Experiment Grid
+### The Experiment — trimmed to 3 runs (2026-07-14)
 
-| Model Size | 100M tok | 500M tok | 1B tok | 2B tok |
-|-----------|----------|----------|--------|--------|
-| **75M** | Run 1 | Run 2 | Run 3 | Run 4 |
-| **150M** | Run 5 | Run 6 | Run 7 | Run 8 |
-| **300M** | — | Run 9 | Run 10 | — |
+Original plan was a 10-run grid (~80-120 GPU hours), then trimmed to 6 (~55-70 hours). Trimmed again to 3 runs: given the harness reuses one fixed LR/config across all model sizes instead of retuning per size, and the corpus is still modest, a 6-10 run "clean scaling law curve" was never going to read as a textbook-quality Chinchilla reproduction anyway — a small, well-chosen set of runs that answers two specific questions carries the same practical and portfolio value at a fraction of the cost.
 
-**That's 10 training runs.** 75M @ 1B tokens takes ~6-8 hours. 150M @ 1B tokens takes ~12-16 hours. Total GPU time: ~80-120 hours.
+| Run | Model | Tokens | Tokens/param | What it answers |
+|---|---|---|---|---|
+| 1 | 75M | 500M | ~7.2x | Undertrained end of the 75M curve |
+| 2 | 75M | 2B | ~28.8x | Near/above Chinchilla-optimal end of the 75M curve |
+| 3 | 150M | 500M | ~3.7x | Cross-size comparison at matched (scarce) data — direct callback to Phase 1's finding that a bigger model can lose to a smaller one when data is scarce |
+
+Runs 1 and 2 show the within-size trend (does more data help). Runs 1 and 3 show the cross-size trend at fixed data (does more parameters help when data is scarce). Two axes, three runs.
+
+**Rough GPU time:** Run 1 ~3.5h, Run 2 ~14h, Run 3 ~7h — **~24-25 hours total**, roughly 2-2.5 days of continuous unattended wall-clock time.
 
 ### Task 3.1: Build the training harness
 - Mixed precision (bfloat16), gradient accumulation, cosine LR with warmup, gradient clipping
@@ -103,9 +107,8 @@ Depends on synthetic data from Task 2.3, so it moves with it. Phase 2's delivera
 - `torch.compile()` + Flash Attention via PyTorch SDPA
 
 ### Task 3.2: Run the experiments
-- Runs 1-4 (75M): ~2 days on-and-off
-- Runs 5-8 (150M): ~4 days
-- Pro tip: Start a run, switch to FrameWeaver, check W&B from your phone
+- Queue all 3 runs to launch back-to-back and let them run unattended — ~24-25 GPU hours, ~2-2.5 days continuous.
+- Pro tip: Start the queue, switch to FrameWeaver, check W&B from your phone
 
 ### Task 3.3: Plot and analyze
 - **Loss vs FLOPs** — color by model size. Chinchilla: compute-optimal tokens ≈ 20× params

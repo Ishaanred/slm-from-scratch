@@ -7,12 +7,16 @@ data/phase2/val.bin
 data/phase2/sample.txt
 data/phase2/clean.txt
 data/phase2/lid.176.bin
+data/phase2/full/
 
 # trained tokenizers (regenerable artifacts)
 src/phase2/bpe_*/
 
 # checkpoints
 checkpoints/
+
+# run logs / GPU telemetry (operational, not portfolio content)
+logs/
 
 # Python
 __pycache__/

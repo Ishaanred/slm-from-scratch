@@ -206,3 +206,4 @@ slm-from-scratch/
 - [`docs/phase2/sprint-plan.md`](docs/phase2/sprint-plan.md) — Phase 2 sprint plan: tokenizer training + data filtering.
 - [`docs/phase2/tokenization.html`](docs/phase2/tokenization.html) — full Phase 2 explainer: why Phase 2 differs from Phase 1, BPE step by step, vocab size tradeoffs, byte-level tokenization, compression ratio, the HF tokenizers library, data quality, and the filtering pipeline.
 - [`docs/phase2/results.md`](docs/phase2/results.md) — Phase 2 results: tokenizer compression comparison vs GPT-2, the verification training run, and the bits-per-byte analysis of why the raw loss numbers looked deceptively close.
+- [`docs/phase3/scaling-laws.html`](docs/phase3/scaling-laws.html) — Phase 3 explainer: what a scaling law is, FLOPs, the Chinchilla rule, undertrained vs overtrained, and the 10-run experiment grid. Not started yet — see [`docs/phase3/sprint-plan.md`](docs/phase3/sprint-plan.md) for the concrete steps.
