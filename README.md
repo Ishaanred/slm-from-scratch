@@ -14,8 +14,8 @@ A hands-on, end-to-end curriculum covering every step of the LLM training pipeli
 |-------|--------|
 | 1. NanoGPT — build a transformer from scratch | **Complete** |
 | 2. Tokenizer + Data Engineering | **Complete** |
-| 3. Scaling Law Experiments | **Up next** |
-| 4. Knowledge Distillation | Not started |
+| 3. Scaling Law Experiments | **Complete** |
+| 4. Knowledge Distillation | **Up next** |
 | 5. Evaluation & Feedback Loop | Not started |
 
 **Phase 1 — complete:**
@@ -206,4 +206,5 @@ slm-from-scratch/
 - [`docs/phase2/sprint-plan.md`](docs/phase2/sprint-plan.md) — Phase 2 sprint plan: tokenizer training + data filtering.
 - [`docs/phase2/tokenization.html`](docs/phase2/tokenization.html) — full Phase 2 explainer: why Phase 2 differs from Phase 1, BPE step by step, vocab size tradeoffs, byte-level tokenization, compression ratio, the HF tokenizers library, data quality, and the filtering pipeline.
 - [`docs/phase2/results.md`](docs/phase2/results.md) — Phase 2 results: tokenizer compression comparison vs GPT-2, the verification training run, and the bits-per-byte analysis of why the raw loss numbers looked deceptively close.
-- [`docs/phase3/scaling-laws.html`](docs/phase3/scaling-laws.html) — Phase 3 explainer: what a scaling law is, FLOPs, the Chinchilla rule, undertrained vs overtrained, and the 10-run experiment grid. Not started yet — see [`docs/phase3/sprint-plan.md`](docs/phase3/sprint-plan.md) for the concrete steps.
+- [`docs/phase3/scaling-laws.html`](docs/phase3/scaling-laws.html) — Phase 3 explainer: what a scaling law is, FLOPs, the Chinchilla rule, undertrained vs overtrained, and the 3-run experiment design.
+- [`docs/phase3/results.md`](docs/phase3/results.md) — Phase 3 results: loss vs tokens and loss vs FLOPs plots across all 3 runs, the data table, and a real training-instability spike found in Run 2's curve.
