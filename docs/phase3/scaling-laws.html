@@ -546,6 +546,7 @@
     <a class="nav-link" href="#the-grid">The 3 training runs</a>
     <a class="nav-link" href="#carried-over">Carried over from Phase 2</a>
     <a class="nav-link" href="#build">How this will actually run</a>
+    <a class="nav-link" href="#results">Results<span class="badge">done</span></a>
   </div>
 
   <div class="nav-group">
@@ -766,9 +767,68 @@
         <div class="num">4</div>
         <div class="body">
           <h4>Run, then plot — done</h4>
-          <p>All 3 runs completed. See <a href="results.md" style="color:var(--accent-soft)">Phase 3 results</a> for the loss-vs-tokens and loss-vs-FLOPs plots, the data table, and a real training-instability spike worth knowing about in Run 2's curve. Reading what the curves say is still yours to do.</p>
+          <p>All 3 runs completed. Results below, full detail in <a href="results.md" style="color:var(--accent-soft)">results.md</a>. Reading what the curves say is still yours to do.</p>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section class="section" id="results">
+    <div class="section-label">The experiment</div>
+    <h2>Results</h2>
+    <p>Same architecture as Phases 1-2, full ~9.14B-token OpenWebText corpus (re-tokenized with the 32K BPE tokenizer), <code>--no_compile</code>, 270W GPU power cap. Numbers read straight from the training logs — see <code>docs/phase3/plot_results.py</code>.</p>
+
+    <table>
+      <tr>
+        <th>Run</th>
+        <th>Model</th>
+        <th>Actual params</th>
+        <th>Tokens</th>
+        <th>Tokens/param</th>
+        <th>Final val loss</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>75M config (8L/8H/576E)</td>
+        <td>69.4M</td>
+        <td>500M</td>
+        <td class="mid">~7.2x</td>
+        <td><strong>5.2171</strong></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>75M config (8L/8H/576E)</td>
+        <td>69.4M</td>
+        <td>2B</td>
+        <td class="good">~28.8x</td>
+        <td><strong>3.8972</strong></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>150M config (12L/12H/768E)</td>
+        <td>135.0M</td>
+        <td>500M</td>
+        <td class="bad">~3.7x</td>
+        <td><strong>3.7578</strong></td>
+      </tr>
+    </table>
+
+    <div style="margin-top:22px">
+      <img src="loss_vs_tokens.png" alt="Validation loss vs tokens seen, all 3 runs" style="width:100%;border-radius:10px;border:1px solid var(--border-light)">
+    </div>
+    <div style="margin-top:16px">
+      <img src="loss_vs_flops.png" alt="Validation loss vs training compute (FLOPs), all 3 runs" style="width:100%;border-radius:10px;border:1px solid var(--border-light)">
+    </div>
+
+    <div class="card" style="margin-top:16px;border-left:3px solid var(--yellow)">
+      <h3 style="color:var(--yellow)">A real data artifact, not noise to average away</h3>
+      <p>Run 2 (75M @ 2B tokens) has a genuine loss spike around iter 50,000-53,000 (val loss jumped from ~4.4 to ~5.9, then recovered on its own within ~3,500 iterations and continued its normal downward trend). No resume or crash happened at that point — it's a real training instability, visible as the jagged section in both plots above.</p>
+    </div>
+
+    <div class="card" style="margin-top:14px;border-left:3px solid var(--pink)">
+      <h3 style="color:var(--pink)">Worth sitting with, not reading past</h3>
+      <p>Run 3 (150M, the lowest tokens/param ratio of the three — the most "undertrained" by the Chinchilla heuristic above) came out with the lowest loss of all three runs, beating both Run 1 (same data, smaller model) and Run 2 (same model, 4x the data). That doesn't match the pattern Phase 1 showed at a smaller scale (77M losing to 50M at matched data). Why, and what it implies for picking Phase 4's student size, is the analysis this project's own rules leave to you — see <a href="results.md" style="color:var(--accent-soft)">results.md</a> for the full numbers to work from.</p>
     </div>
   </section>
 
