@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 4: Knowledge Distillation</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --sidebar-w: 240px;
+    --bg: #0f1117;
+    --surface: #1e293b;
+    --border: #1e293b;
+    --border-light: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --dim: #64748b;
+    --accent: #818cf8;
+    --accent-soft: #a5b4fc;
+    --green: #34d399;
+    --pink: #f472b6;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --purple: #c084fc;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+    padding-left: var(--sidebar-w);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    background: #0b0e15;
+    padding: 24px 0 40px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-logo {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .sidebar-logo span {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .sidebar-logo p {
+    font-size: 0.72rem;
+    color: var(--dim);
+    margin-top: 2px;
+  }
+
+  .nav-group { margin-bottom: 6px; }
+
+  .nav-group-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dim);
+    padding: 10px 20px 4px;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 20px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+
+  .nav-link:hover {
+    color: var(--text);
+    background: rgba(129,140,248,0.06);
+  }
+
+  .nav-link.active {
+    color: var(--accent-soft);
+    border-left-color: var(--accent);
+    background: rgba(129,140,248,0.08);
+  }
+
+  .badge {
+    font-size: 0.62rem;
+    background: #1a2e1a;
+    color: #86efac;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-weight: 600;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .badge.todo { background: #3b1c00; color: #fdba74; }
+
+  /* sidebar scrollbar (match Phase 1/2/3) */
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+  /* PHASE SWITCHER (dropdown) */
+  .phase-dd { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px; }
+  .phase-dd > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 9px; padding: 8px 20px; font-size: 0.8rem; font-weight: 700; color: var(--accent-soft); }
+  .phase-dd > summary::-webkit-details-marker { display: none; }
+  .phase-dd > summary .chev { margin-left: auto; color: var(--dim); font-size: 0.65rem; transition: transform 0.15s; }
+  .phase-dd[open] > summary .chev { transform: rotate(90deg); }
+  .phase-dd-body { padding-top: 4px; }
+  .pnum { display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px; border-radius: 5px; background: #1e293b; color: var(--dim); font-size: 0.68rem; font-weight: 700; flex-shrink: 0; }
+  .phase-dd > summary .pnum { background: #312e81; color: var(--accent-soft); }
+  .nav-link.phase { display: flex; align-items: center; gap: 9px; font-weight: 600; }
+  .nav-link.phase.active { color: var(--accent-soft); border-left-color: var(--accent); background: rgba(129,140,248,0.08); }
+  .nav-link.phase.active .pnum { background: #312e81; color: var(--accent-soft); }
+  .nav-link.phase.soon { color: var(--dim); cursor: default; }
+  .nav-link.phase.soon:hover { background: transparent; color: var(--dim); }
+
+  /* MAIN */
+  .main {
+    margin: 0 auto;
+    width: 100%;
+    max-width: 1180px;
+    padding: 0 56px 120px;
+  }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    body { padding-left: 0; }
+    .main { padding: 0 20px 80px; }
+  }
+
+  /* HERO */
+  .hero {
+    padding: 64px 0 40px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .hero-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  .hero h1 {
+    font-size: 2.4rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, #818cf8, #a78bfa, #f472b6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1.2;
+    margin-bottom: 14px;
+  }
+
+  .hero p {
+    font-size: 1rem;
+    color: var(--muted);
+    max-width: 560px;
+  }
+
+  /* SECTIONS */
+  .section { padding-top: 72px; }
+
+  .section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .section h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 14px;
+    scroll-margin-top: 24px;
+  }
+
+  .section p {
+    color: var(--muted);
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+  }
+
+  .section p strong { color: var(--text); }
+
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.84em;
+    color: var(--accent-soft);
+    background: var(--surface);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* ANALOGY */
+  .analogy {
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin-top: 18px;
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+
+  .analogy strong { color: var(--accent-soft); }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 18px;
+    margin-top: 14px;
+  }
+
+  .card h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-bottom: 6px;
+  }
+
+  .card p { font-size: 0.875rem; color: var(--muted); margin: 0; }
+
+  /* PIPELINE */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+  }
+
+  .pipe-box {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-size: 0.83rem;
+    color: var(--text);
+    text-align: center;
+    flex: 1;
+    min-width: 90px;
+  }
+
+  .pipe-box.hi-orange {
+    background: var(--surface);
+    border-color: var(--accent);
+    color: var(--accent-soft);
+  }
+
+  .pipe-arrow { color: #475569; font-size: 1.1rem; flex-shrink: 0; }
+
+  /* COMPARE PHASE GRID */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 20px;
+  }
+
+  .compare-card {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 18px;
+  }
+
+  .compare-card.phase3 { border-top: 3px solid var(--purple); }
+  .compare-card.phase4 { border-top: 3px solid var(--pink); }
+
+  .compare-card .phase-tag {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .compare-card.phase3 .phase-tag { color: var(--purple); }
+  .compare-card.phase4 .phase-tag { color: var(--pink); }
+
+  .compare-card h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 8px;
+  }
+
+  .compare-card ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .compare-card ul li {
+    font-size: 0.82rem;
+    color: var(--muted);
+    padding-left: 14px;
+    position: relative;
+  }
+
+  .compare-card ul li::before {
+    content: '·';
+    position: absolute;
+    left: 0;
+    color: var(--dim);
+  }
+
+  @media (max-width: 700px) {
+    .compare-grid { grid-template-columns: 1fr; }
+  }
+
+  /* LOOP STEPS */
+  .loop-steps {
+    display: flex;
+    flex-direction: column;
+    margin-top: 18px;
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .loop-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .loop-step:last-child { border-bottom: none; }
+
+  .loop-step .num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 2px;
+    background: #312e81;
+    color: var(--accent-soft);
+  }
+
+  .loop-step .body h4 { font-size: 0.9rem; font-weight: 600; color: #f1f5f9; margin-bottom: 3px; }
+  .loop-step .body p { font-size: 0.82rem; color: var(--dim); margin: 0; }
+
+  /* TABLE */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 18px;
+    font-size: 0.84rem;
+  }
+
+  th {
+    background: var(--surface);
+    color: var(--muted);
+    text-align: left;
+    padding: 9px 13px;
+    font-weight: 600;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  td {
+    padding: 9px 13px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+
+  td:first-child { color: var(--muted); }
+  tr:last-child td { border-bottom: none; }
+
+  .good { color: var(--green); }
+  .bad  { color: var(--red); }
+  .mid  { color: var(--yellow); }
+
+  /* CODE BLOCK */
+  .code-block {
+    background: #0b0e15;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.82rem;
+    overflow-x: auto;
+    margin-top: 14px;
+    line-height: 1.7;
+  }
+
+  .cm  { color: var(--dim); font-style: italic; }
+  .num { color: #79c0ff; }
+
+  /* SPOILER */
+  .spoiler { margin-top: 14px; }
+
+  .spoiler-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: var(--dim);
+    user-select: none;
+    padding: 4px 0;
+    border: none;
+    background: none;
+  }
+
+  .spoiler-toggle:hover { color: var(--muted); }
+  .spoiler-toggle .sym { font-size: 0.9rem; }
+
+  .spoiler-body {
+    display: none;
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-top: 8px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  .spoiler-body.open { display: block; }
+
+  /* DISTRIBUTION BARS (hard vs soft label demo) */
+  .dist-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+    font-size: 0.82rem;
+  }
+
+  .dist-label { width: 70px; flex-shrink: 0; color: var(--text); font-family: 'JetBrains Mono', monospace; }
+  .dist-bar-wrap { flex: 1; background: #0f172a; border-radius: 4px; height: 22px; overflow: hidden; }
+  .dist-bar { height: 100%; display: flex; align-items: center; padding-left: 10px; font-size: 0.72rem; font-weight: 600; border-radius: 4px; }
+
+  /* Q&A */
+  .qa-block {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+  }
+
+  .qa-q {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .qa-a { font-size: 0.875rem; color: var(--muted); line-height: 1.75; }
+  .qa-a strong { color: var(--text); }
+  .qa-a p { margin-top: 8px; }
+  .qa-a p:first-child { margin-top: 0; }
+
+  /* DIVIDER */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin-top: 64px;
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <span>SLM from Scratch</span>
+    <p>Phase 4: Distillation</p>
+  </div>
+
+  <details class="nav-group phase-dd">
+    <summary><span class="pnum">4</span>Phase 4 · Distillation<span class="chev">▶</span></summary>
+    <div class="phase-dd-body">
+      <a class="nav-link phase" href="../phase1/how-transformers-work.html"><span class="pnum">1</span>Transformers</a>
+      <a class="nav-link phase" href="../phase2/tokenization.html"><span class="pnum">2</span>Tokenization + Data</a>
+      <a class="nav-link phase" href="../phase3/scaling-laws.html"><span class="pnum">3</span>Scaling Laws</a>
+      <a class="nav-link phase active" href="#roadmap"><span class="pnum">4</span>Distillation</a>
+      <span class="nav-link phase soon"><span class="pnum">5</span>Evaluation</span>
+    </div>
+  </details>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Start Here</div>
+    <a class="nav-link" href="#roadmap">Phase 4 start to finish</a>
+    <a class="nav-link" href="#phase-shift">What changed from Phase 3</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Concepts</div>
+    <a class="nav-link" href="#what-is-distillation">What is distillation</a>
+    <a class="nav-link" href="#dark-knowledge">Hard labels vs soft labels</a>
+    <a class="nav-link" href="#temperature">Temperature scaling</a>
+    <a class="nav-link" href="#kl-divergence">KL divergence</a>
+    <a class="nav-link" href="#hybrid-loss">The hybrid loss</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">The Setup</div>
+    <a class="nav-link" href="#teacher">The teacher model</a>
+    <a class="nav-link" href="#build">How this will actually run</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Q&amp;A</div>
+    <a class="nav-link" href="#q-why-not-scratch">Why not just train from scratch?<span class="badge">Q</span></a>
+    <a class="nav-link" href="#q-topk">Why top-K logits, not the full vocab?<span class="badge">Q</span></a>
+    <a class="nav-link" href="#q-moe-teacher">Does the teacher being MoE change anything?<span class="badge">Q</span></a>
+    <a class="nav-link" href="#q-decode-vs-batch">Isn't ~80 tok/s way too slow for this?<span class="badge">Q</span></a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <div class="hero">
+    <div class="hero-eyebrow">Phase 4: Knowledge Distillation</div>
+    <h1>Teach a small model<br>to think like a big one.</h1>
+    <p>Phase 3 asked how big your model should be. Phase 4 asks a different question: can a small model learn faster by copying a large one's reasoning, instead of discovering everything from raw text alone? Not started yet — this page is the map for when it does.</p>
+    <div class="analogy" style="margin-top:20px">
+      <strong>Not a today task:</strong> teacher setup, logit generation, and the actual distillation loss are all real, unstarted work. See <a href="sprint-plan.md" style="color:var(--accent-soft)">docs/phase4/sprint-plan.md</a> for the concrete steps and what's already true vs. still unverified on this machine.
+    </div>
+  </div>
+
+  <!-- ROADMAP -->
+  <section class="section" id="roadmap">
+    <div class="section-label">Start here</div>
+    <h2>Phase 4 from start to finish</h2>
+    <p>One pipeline again: get a teacher talking, capture what it "thinks" about your training data, decide how to turn that into a loss, then train the actual student.</p>
+
+    <div class="pipeline" style="margin-top:22px">
+      <div class="pipe-box">Teacher serving</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box hi-orange">Generate + cache logits</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box">Compare loss variants</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box">Train student + baseline</div>
+    </div>
+
+    <div class="card" style="margin-top:20px;border-left:3px solid var(--pink)">
+      <h3 style="color:var(--pink)">What "done" looks like</h3>
+      <p>A distilled student that beats a from-scratch baseline trained on the same data — and an honest account of whether it actually did, since a distilled model losing to the baseline is also a real, useful result, not a failure to hide.</p>
+    </div>
+  </section>
+
+  <!-- PHASE SHIFT -->
+  <section class="section" id="phase-shift">
+    <div class="section-label">Context</div>
+    <h2>What changed from Phase 3</h2>
+    <p>Phase 3 was one model learning from raw text, at different scales. Phase 4 introduces a second model into the loop — a teacher whose outputs become part of the student's training signal, not just its architecture.</p>
+
+    <div class="compare-grid">
+      <div class="compare-card phase3">
+        <div class="phase-tag">Phase 3</div>
+        <h3>One model, raw text</h3>
+        <ul>
+          <li>Loss = compare prediction to the actual next token</li>
+          <li>Only one thing decides the learning signal: the corpus</li>
+          <li>Bigger/more data was the only lever</li>
+        </ul>
+      </div>
+      <div class="compare-card phase4">
+        <div class="phase-tag">Phase 4</div>
+        <h3>Two models, teacher + student</h3>
+        <ul>
+          <li>Loss can also compare student's guess to teacher's full guess distribution</li>
+          <li>A second signal enters: what the teacher was uncertain about</li>
+          <li>The lever is which loss variant, and how much to trust the teacher</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT IS DISTILLATION -->
+  <section class="section" id="what-is-distillation">
+    <div class="section-label">Concept</div>
+    <h2>What is distillation</h2>
+    <p>Knowledge distillation trains a small "student" model to imitate a large "teacher" model's outputs, instead of (or in addition to) learning purely from raw text. The student never sees the teacher's weights or architecture — only what the teacher predicts, for the same inputs the student is training on.</p>
+
+    <div class="analogy">
+      <strong>Analogy:</strong> Two students studying for the same exam. One only has the textbook and works out every practice problem from first principles. The other has that textbook <em>and</em> a worked answer key from the best student in the class, showing not just the final answer but how confident that student was between every option on a multiple-choice question. The second student usually learns faster, because the answer key encodes information the textbook alone doesn't — which wrong answers were "almost right."
+    </div>
+
+    <p style="margin-top:16px">That "almost right" information is the whole point, and it's what the next section is actually about.</p>
+  </section>
+
+  <!-- HARD VS SOFT LABELS -->
+  <section class="section" id="dark-knowledge">
+    <div class="section-label">Concept</div>
+    <h2>Hard labels vs soft labels</h2>
+    <p>Training on raw text (Phases 1-3) is <strong>hard-label</strong> training: for "the cat sat on the ___", the target is just the single correct token, "mat", full credit or nothing. Every other word in the vocabulary gets the same zero signal, whether it was "rug" (a reasonable guess) or "airplane" (nonsense).</p>
+    <p>A teacher model's full output distribution is a <strong>soft label</strong>: instead of one correct answer, you get the teacher's confidence spread across many plausible continuations.</p>
+
+    <div class="dist-row">
+      <div class="dist-label">mat</div>
+      <div class="dist-bar-wrap"><div class="dist-bar" style="width:52%;background:rgba(129,140,248,0.35);color:var(--accent-soft)">52%</div></div>
+    </div>
+    <div class="dist-row">
+      <div class="dist-label">rug</div>
+      <div class="dist-bar-wrap"><div class="dist-bar" style="width:23%;background:rgba(52,211,153,0.3);color:var(--green)">23%</div></div>
+    </div>
+    <div class="dist-row">
+      <div class="dist-label">floor</div>
+      <div class="dist-bar-wrap"><div class="dist-bar" style="width:14%;background:rgba(251,191,36,0.3);color:var(--yellow)">14%</div></div>
+    </div>
+    <div class="dist-row">
+      <div class="dist-label">chair</div>
+      <div class="dist-bar-wrap"><div class="dist-bar" style="width:6%;background:rgba(251,191,36,0.2);color:var(--dim)">6%</div></div>
+    </div>
+    <div class="dist-row">
+      <div class="dist-label">airplane</div>
+      <div class="dist-bar-wrap"><div class="dist-bar" style="width:0.1%;background:rgba(248,113,113,0.15);color:var(--dim)">~0%</div></div>
+    </div>
+
+    <div class="card" style="margin-top:16px;border-left:3px solid var(--accent)">
+      <h3 style="color:var(--accent-soft)">This is often called "dark knowledge"</h3>
+      <p>The term (from Hinton, Vinyals & Dean's 2015 distillation paper) refers to exactly this: the relative ranking and confidence the teacher assigns to <em>wrong</em> answers. "Mat" beating "rug" by only 2x, while "airplane" is essentially zero, tells the student something about the shape of the problem that a single correct-answer label never could.</p>
+    </div>
+  </section>
+
+  <!-- TEMPERATURE -->
+  <section class="section" id="temperature">
+    <div class="section-label">Concept</div>
+    <h2>Temperature scaling</h2>
+    <p>A model's raw softmax output is usually very peaked — often 90%+ confidence on the top token, with everything else squeezed into a tiny sliver of probability. At that sharpness, the dark knowledge from the section above is barely visible: "rug" might show as 2% instead of a more informative 23%.</p>
+    <p><strong>Temperature</strong> (T) is a single number that turns up the "heat" on that distribution before comparing student and teacher, spreading the probability mass back out so the relative confidences among wrong answers become visible again. T=1 is the normal, unmodified softmax; T=2-4 is a common range for distillation, per this project's own plan.</p>
+
+    <div class="analogy">
+      <strong>Analogy:</strong> Squinting vs. really looking. A very confident softmax is like squinting at a photo until you only see the brightest point. Turning up temperature is like opening your eyes fully — the dim details (the runner-up answers) become visible again, without changing what's actually in the photo.
+    </div>
+
+    <div class="spoiler">
+      <button class="spoiler-toggle" onclick="this.nextElementSibling.classList.toggle('open')">
+        <span class="sym">∑</span> The actual formula
+      </button>
+      <div class="spoiler-body">
+        Standard softmax: <code>p_i = exp(z_i) / Σ_j exp(z_j)</code>, where <code>z</code> are the raw logits. Temperature-scaled softmax divides every logit by T first: <code>p_i = exp(z_i / T) / Σ_j exp(z_j / T)</code>. As T grows, the differences between logits shrink relative to T, so the resulting distribution flattens toward uniform. As T→0, it sharpens toward a one-hot vector on the single highest logit. Both the teacher's and student's outputs get divided by the same T before computing the distillation loss, so the comparison stays fair — this is also why the loss is typically scaled by T² when combined with a hard-label term, to keep gradient magnitudes comparable across different T values.
+      </div>
+    </div>
+  </section>
+
+  <!-- KL DIVERGENCE -->
+  <section class="section" id="kl-divergence">
+    <div class="section-label">Concept</div>
+    <h2>KL divergence</h2>
+    <p>Once you have two probability distributions — the teacher's (temperature-scaled) output and the student's own — you need a number that measures how different they are, so you can push the student's distribution closer to the teacher's. That number is <strong>KL divergence</strong> (Kullback-Leibler divergence).</p>
+
+    <div class="analogy">
+      <strong>Analogy:</strong> Packing a suitcase using someone else's packing list. If your list assumes 3 shirts and 1 jacket, but you actually need 1 shirt and 3 jackets, you'll overpack shirts and scramble for jackets — the mismatch between the list you're using and what's actually needed costs you real, measurable inefficiency. KL divergence is that inefficiency, quantified: how many extra "bits" of surprise you pay by using the student's distribution as your guide when the teacher's is closer to the truth of what's actually likely.
+    </div>
+
+    <div class="spoiler">
+      <button class="spoiler-toggle" onclick="this.nextElementSibling.classList.toggle('open')">
+        <span class="sym">∑</span> The actual formula
+      </button>
+      <div class="spoiler-body">
+        For distributions P (teacher, treated as the reference) and Q (student): <code>KL(P || Q) = Σ_i P(i) · log(P(i) / Q(i))</code>. It's zero only when P and Q are identical, and grows the more Q assigns low probability to outcomes P considers likely. It is <strong>not symmetric</strong> — <code>KL(P||Q) ≠ KL(Q||P)</code> in general, which is why distillation conventionally uses the teacher as P and the student as Q: it penalizes the student for being confidently wrong about things the teacher was confident about, more than it penalizes the student for hedging on things the teacher was unsure of.
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;border-left:3px solid var(--yellow)">
+      <h3 style="color:var(--yellow)">This is the piece that's yours to implement</h3>
+      <p>Per this project's own <code>CLAUDE.md</code>, the actual distillation loss — hard cross-entropy, soft KL divergence with temperature, or the hybrid mix below — is a learning-objective piece, same boundary as <code>train_step()</code> and <code>configure_optimizers</code> in the phases before this one. This page explains the math; writing the loss function is the work that makes it actually understood.</p>
+    </div>
+  </section>
+
+  <!-- HYBRID LOSS -->
+  <section class="section" id="hybrid-loss">
+    <div class="section-label">Concept</div>
+    <h2>The hybrid loss</h2>
+    <p>In practice, distillation setups rarely use pure soft-label KL divergence alone — they mix it with the ordinary hard-label cross-entropy against the real next token, since the teacher's distribution is a helpful <em>signal</em>, not a perfect substitute for ground truth (the teacher can be wrong too).</p>
+    <p>This project's plan (`docs/plan.md`) frames it as three variants to actually compare, not assume:</p>
+
+    <div class="loop-steps" style="margin-top:18px">
+      <div class="loop-step">
+        <div class="num">1</div>
+        <div class="body">
+          <h4>Hard distillation</h4>
+          <p>Plain cross-entropy against the teacher's single top-1 predicted token, instead of the real next token. Simple, but throws away all the soft-label information above.</p>
+        </div>
+      </div>
+      <div class="loop-step">
+        <div class="num">2</div>
+        <div class="body">
+          <h4>Soft distillation</h4>
+          <p>Pure KL divergence between student and temperature-scaled teacher distributions (T=2-4). Uses the full dark-knowledge signal, but never directly sees the real ground-truth token.</p>
+        </div>
+      </div>
+      <div class="loop-step">
+        <div class="num">3</div>
+        <div class="body">
+          <h4>Hybrid</h4>
+          <p>A weighted mix — this project's plan suggests 0.5 × KL + 0.5 × CE against the real token. Gets both signals at once; the weighting itself is a real hyperparameter to tune, not a fixed constant.</p>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top:16px">The plan is to compare all three on a small token budget (75-100M tokens) before committing to one for the full-scale run — cheap enough to actually test rather than guess.</p>
+  </section>
+
+  <!-- TEACHER SETUP -->
+  <section class="section" id="teacher">
+    <div class="section-label">The setup</div>
+    <h2>The teacher model</h2>
+    <p>Qwen 3.6 35B-A3B — a Mixture-of-Experts model, already downloaded on this machine (35GB GGUF, quantized). "A3B" means roughly 3B parameters are actually active per token, even though the model has 35B total — most of the weights are specialized "experts" that only activate for certain kinds of input.</p>
+
+    <div class="card" style="margin-top:16px;border-left:3px solid var(--accent)">
+      <h3 style="color:var(--accent-soft)">Why that matters for a 16GB card</h3>
+      <p>A dense 35B model at 4-bit quantization needs ~17.5GB just for weights — already over this card's 16.3GB. But an MoE only needs its <em>active</em> experts fast (on GPU); the rest can sit in system RAM and get swapped in on demand. This machine already has a config tuned exactly for that: CPU-offloaded experts, attention on GPU, using only ~3-4GB of VRAM. See <a href="sprint-plan.md" style="color:var(--accent-soft)">sprint-plan.md</a> for the current state of getting it actually running.</p>
+    </div>
+  </section>
+
+  <!-- BUILD -->
+  <section class="section" id="build">
+    <div class="section-label">Build it</div>
+    <h2>How this will actually run</h2>
+    <p>Full breakdown in <a href="sprint-plan.md" style="color:var(--accent-soft)">docs/phase4/sprint-plan.md</a>. Short version:</p>
+
+    <div class="loop-steps" style="margin-top:18px">
+      <div class="loop-step">
+        <div class="num">1</div>
+        <div class="body">
+          <h4>Get the teacher serving, measure real throughput</h4>
+          <p>A Docker setup for this exact model already exists on this machine but needs a driver-mismatch fix first (non-blocking, deferred). Once up: measure <em>batched, teacher-forced</em> throughput specifically — not interactive chat speed, which is a different, much slower number that doesn't apply to logit generation.</p>
+        </div>
+      </div>
+      <div class="loop-step">
+        <div class="num">2</div>
+        <div class="body">
+          <h4>Pick the student size</h4>
+          <p>Phase 3's Run 3 (150M beat both 75M runs at matched and 4x data) is one real input here — not a settled decision.</p>
+        </div>
+      </div>
+      <div class="loop-step">
+        <div class="num">3</div>
+        <div class="body">
+          <h4>Generate + cache teacher logits</h4>
+          <p>Top-K (K=8192) logits per token, over the same tokenized corpus from Phase 2/3, saved as memory-mapped files. Infrastructure — happy to write this part.</p>
+        </div>
+      </div>
+      <div class="loop-step">
+        <div class="num">4</div>
+        <div class="body">
+          <h4>Compare loss variants, then train for real</h4>
+          <p>Small-scale comparison of hard/soft/hybrid first, then the full distilled run plus a from-scratch baseline on the same data — the actual test this whole phase exists to run.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Q&A -->
+  <hr class="divider">
+
+  <section class="section" id="q-why-not-scratch">
+    <div class="section-label">Q&amp;A</div>
+    <h2>Questions</h2>
+
+    <div class="qa-block">
+      <div class="qa-q">Why not just train the small model from scratch on the same data? Why bother with a teacher at all?</div>
+      <div class="qa-a">
+        <p>Because raw text only ever tells you "this happened, this didn't" — hard labels, one correct token, zero information about which wrong answers were close. A well-trained teacher has already worked out the relative plausibility of every alternative, which is signal the raw corpus itself doesn't contain in an easily learnable form.</p>
+        <p>The honest empirical answer to "does that actually help enough to matter" is exactly what this phase's from-scratch baseline is for. If the distilled student doesn't beat it, that's a real, useful finding about this specific setup, not a reason to hide the baseline.</p>
+      </div>
+    </div>
+
+    <div class="qa-block" id="q-topk">
+      <div class="qa-q">Why cache only the top-K (8192) logits instead of the full vocabulary?</div>
+      <div class="qa-a">
+        <p>Storage and signal-to-noise. The vocabulary here is 32K tokens, and the vast majority of them have essentially zero probability for any given context — storing all 32K logits per token position is mostly storing near-zero noise. The top 8192 captures effectively all of the meaningful probability mass while cutting storage roughly in quarter, and the tokens excluded contribute negligible KL-divergence signal anyway.</p>
+      </div>
+    </div>
+
+    <div class="qa-block" id="q-moe-teacher">
+      <div class="qa-q">Does it matter that the teacher itself is a Mixture-of-Experts model?</div>
+      <div class="qa-a">
+        <p>Not for the distillation math — the student only ever sees the teacher's final output distribution, the same as it would for a dense teacher. MoE-vs-dense is entirely a teacher-side implementation detail; it changes how expensive the teacher is to run (see the VRAM card above), not what signal it produces for the student to learn from.</p>
+      </div>
+    </div>
+
+    <div class="qa-block" id="q-decode-vs-batch">
+      <div class="qa-q">This machine reportedly gets ~80 tokens/sec from this teacher setup. Isn't that far too slow to generate logits for hundreds of millions of tokens?</div>
+      <div class="qa-a">
+        <p>That 80 tok/s number describes <strong>interactive chat generation</strong> — one token at a time, autoregressive, waiting on memory bandwidth for the CPU-offloaded MoE experts at every single step. That is not the operation Task 2 actually needs.</p>
+        <p>Generating teacher logits for distillation doesn't require generating any new text at all. The target tokens are already known (they're your existing training corpus) — this is a <strong>teacher-forced forward pass</strong>: feed in a whole batch of already-tokenized sequences at once and read off the logits at every position in a single pass, the same way a training step's forward pass works. That's a fundamentally different, typically much higher, throughput regime than token-by-token decode speed, because it batches over the sequence dimension instead of waiting on one token at a time.</p>
+        <p>Whether it's fast <em>enough</em> for a useful token budget is still a real open question — it just needs its own measurement (batched prefill throughput), not a reuse of the 80 tok/s decode number.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  const links = document.querySelectorAll('.nav-link:not(.phase)');
+  const sections = document.querySelectorAll('section[id]');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`.nav-link[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-15% 0px -70% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
