@@ -208,3 +208,4 @@ slm-from-scratch/
 - [`docs/phase2/results.md`](docs/phase2/results.md) — Phase 2 results: tokenizer compression comparison vs GPT-2, the verification training run, and the bits-per-byte analysis of why the raw loss numbers looked deceptively close.
 - [`docs/phase3/scaling-laws.html`](docs/phase3/scaling-laws.html) — Phase 3 explainer: what a scaling law is, FLOPs, the Chinchilla rule, undertrained vs overtrained, and the 3-run experiment design.
 - [`docs/phase3/results.md`](docs/phase3/results.md) — Phase 3 results: loss vs tokens and loss vs FLOPs plots across all 3 runs, the data table, and a real training-instability spike found in Run 2's curve.
+- [`docs/phase4/sprint-plan.md`](docs/phase4/sprint-plan.md) — Phase 4 plan: teacher setup (Qwen 3.6 35B-A3B, already downloaded locally), student size, logit-generation pipeline, and the distillation-loss learning boundary. Not started yet.
