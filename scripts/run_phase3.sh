@@ -64,8 +64,17 @@ run() {
   exit 1
 }
 
+COOLDOWN_SECONDS=600
+
+cooldown() {
+  echo "[queue] cooling down for $((COOLDOWN_SECONDS / 60)) min before next run..."
+  sleep "$COOLDOWN_SECONDS"
+}
+
 run "75m_500m" 8 8 576 500000000
+cooldown
 run "75m_2b"   8 8 576 2000000000
+cooldown
 run "150m_500m" 12 12 768 500000000
 
 echo "[queue] all 3 runs complete"
