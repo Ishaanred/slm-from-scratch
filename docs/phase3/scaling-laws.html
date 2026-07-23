@@ -778,7 +778,7 @@
   <section class="section" id="results">
     <div class="section-label">The experiment</div>
     <h2>Results</h2>
-    <p>Same architecture as Phases 1-2, full ~9.14B-token OpenWebText corpus (re-tokenized with the 32K BPE tokenizer), <code>--no_compile</code>, 270W GPU power cap. Numbers read straight from the training logs — see <code>docs/phase3/plot_results.py</code>.</p>
+    <p>Same architecture as Phases 1-2, full ~9.14B-token OpenWebText corpus (re-tokenized with the 32K BPE tokenizer). Numbers read straight from the training logs — see <code>docs/phase3/plot_results.py</code>.</p>
 
     <table>
       <tr>
@@ -824,7 +824,7 @@
 
     <div class="card" style="margin-top:16px;border-left:3px solid var(--yellow)">
       <h3 style="color:var(--yellow)">A real data artifact, not noise to average away</h3>
-      <p>Run 2 (75M @ 2B tokens) has a genuine loss spike around iter 50,000-53,000 (val loss jumped from ~4.4 to ~5.9, then recovered on its own within ~3,500 iterations and continued its normal downward trend). No resume or crash happened at that point — it's a real training instability, visible as the jagged section in both plots above.</p>
+      <p>Run 2 (75M @ 2B tokens) has a genuine loss spike around iter 50,000-53,000 (val loss jumped from ~4.4 to ~5.9, then recovered on its own within ~3,500 iterations and continued its normal downward trend). No checkpoint resume happened at that point — it's a real training instability, visible as the jagged section in both plots above.</p>
     </div>
 
     <div class="card" style="margin-top:14px;border-left:3px solid var(--pink)">
