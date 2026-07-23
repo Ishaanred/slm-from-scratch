@@ -500,6 +500,7 @@
     <div class="nav-group-label">The Setup</div>
     <a class="nav-link" href="#what-exists">What's available to evaluate</a>
     <a class="nav-link" href="#build">How this will actually run</a>
+    <a class="nav-link" href="#results">Results<span class="badge">done</span></a>
   </div>
 
   <div class="nav-group">
@@ -507,6 +508,7 @@
     <a class="nav-link" href="#q-why-not-just-loss">Isn't validation loss enough?<span class="badge">Q</span></a>
     <a class="nav-link" href="#q-worth-it">Is the feedback loop worth repeating Phase 4's teacher cost?<span class="badge">Q</span></a>
     <a class="nav-link" href="#q-random-result">What if every model just scores at random chance?<span class="badge">Q</span></a>
+    <a class="nav-link" href="#q-contamination">These are open datasets — couldn't a model just memorize them?<span class="badge">Q</span></a>
   </div>
 </nav>
 
@@ -724,22 +726,22 @@
       <div class="loop-step">
         <div class="num">1</div>
         <div class="body">
-          <h4>Install lm-eval-harness, write the adapter</h4>
-          <p><code>pip install lm-eval</code> (0.4.12 available), then a thin wrapper around this project's <code>GPT</code> + tokenizer implementing <code>loglikelihood</code>. Infrastructure — happy to write this part.</p>
+          <h4>Install lm-eval-harness, write the adapter — done</h4>
+          <p><code>pip install lm-eval</code> (0.4.12), plus <code>src/phase5/eval_model.py</code> — a wrapper around this project's <code>GPT</code> + tokenizer implementing <code>loglikelihood</code>, <code>loglikelihood_rolling</code>, and <code>generate_until</code>. Sanity-checked directly (model correctly rates "Paris" more likely than "banana" as a continuation) before trusting it with a real run.</p>
         </div>
       </div>
       <div class="loop-step">
         <div class="num">2</div>
         <div class="body">
-          <h4>Benchmark the real checkpoints</h4>
-          <p>All 5 of this project's own models, 2-4 benchmarks (not the full 6-task list blind), optionally GPT-2-124M/SmolLM-135M from HuggingFace as off-the-shelf reference points.</p>
+          <h4>Benchmark the real checkpoints — done</h4>
+          <p>All 4 checkpoints that actually exist (Phase 1's 50M was overwritten on disk, only 77M survived), 3 benchmarks (PIQA, HellaSwag, ARC-Easy). Took ~9 minutes total, real numbers below.</p>
         </div>
       </div>
       <div class="loop-step">
         <div class="num">3</div>
         <div class="body">
-          <h4>Read the actual wrong answers</h4>
-          <p>Per-example output logging, categorized by hand — tokenization artifact, reasoning gap, or scale limitation. No teacher needed for this step.</p>
+          <h4>Read the actual wrong answers — data ready, analysis pending</h4>
+          <p>Per-example output logging saved (<code>docs/phase5/eval_samples_*.json</code>) for the actual categorization — tokenization artifact, reasoning gap, or scale limitation. No teacher needed for this step.</p>
         </div>
       </div>
       <div class="loop-step">
@@ -750,6 +752,58 @@
         </div>
       </div>
     </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section class="section" id="results">
+    <div class="section-label">The setup</div>
+    <h2>Results</h2>
+    <p>All 4 available checkpoints, 3 benchmarks, ~9 minutes total. Numbers are <code>acc,none</code> (raw accuracy, not length-normalized) straight from the harness — see <code>docs/phase5/eval_results.json</code>.</p>
+
+    <table>
+      <tr>
+        <th>Checkpoint</th>
+        <th>PIQA (~50% floor)</th>
+        <th>HellaSwag (~25% floor)</th>
+        <th>ARC-Easy (~25% floor)</th>
+      </tr>
+      <tr>
+        <td>Phase 1 — 77M</td>
+        <td class="mid">53.4%</td>
+        <td class="bad">26.0%</td>
+        <td class="bad">27.9%</td>
+      </tr>
+      <tr>
+        <td>Phase 3 — 75M @ 500M tok</td>
+        <td class="mid">53.8%</td>
+        <td class="bad">26.1%</td>
+        <td class="mid">29.8%</td>
+      </tr>
+      <tr>
+        <td>Phase 3 — 75M @ 2B tok</td>
+        <td class="mid">54.8%</td>
+        <td class="bad">26.4%</td>
+        <td class="good">31.7%</td>
+      </tr>
+      <tr>
+        <td>Phase 3 — 150M @ 500M tok</td>
+        <td class="mid">54.7%</td>
+        <td class="bad">26.2%</td>
+        <td class="good">32.4%</td>
+      </tr>
+    </table>
+
+    <div class="card" style="margin-top:16px;border-left:3px solid var(--yellow)">
+      <h3 style="color:var(--yellow)">HellaSwag: completely flat</h3>
+      <p>Every checkpoint lands at ~26%, statistically indistinguishable from the 25% random-chance floor, regardless of size or tokens seen. Exactly the honest outcome this page braced for.</p>
+    </div>
+
+    <div class="card" style="margin-top:14px;border-left:3px solid var(--green)">
+      <h3 style="color:var(--green)">ARC-Easy: a real, if modest, trend</h3>
+      <p>27.9% → 29.8% → 31.7% → 32.4% — a consistent climb with scale and data, the clearest signal of the three benchmarks. Somewhat better than the fully-flat-everywhere scenario this page treated as the likely outcome.</p>
+    </div>
+
+    <p style="margin-top:14px;font-size:0.85rem">What this actually means — why HellaSwag stayed flat while ARC-Easy moved, and whether it's worth reading the per-example data behind it — is the analysis step that's yours to do, per this project's own rules on interpreting results.</p>
   </section>
 
   <!-- Q&A -->
@@ -778,6 +832,19 @@
       <div class="qa-q">What if every model just scores at random chance on every benchmark?</div>
       <div class="qa-a">
         <p>That would still be a real, reportable result — and consistent with this project's own established pattern of treating an honest negative finding as valuable, not as something to bury (Phase 2's tokenizer regression, Phase 4's tokenizer-mismatch blocker). "Here's the compute/data threshold below which standard benchmarks show no signal, measured directly rather than assumed" is a genuinely useful thing to know and document, and arguably a more interesting portfolio finding than a clean win would be — it's exactly the kind of scale intuition Phase 3's Chinchilla analysis was already building toward.</p>
+      </div>
+    </div>
+
+    <div class="qa-block" id="q-contamination">
+      <div class="qa-q">PIQA, HellaSwag, and ARC are all public, open-source datasets. Couldn't a model just be trained on them and score 90%+?</div>
+      <div class="qa-a">
+        <p>Yes — this is a real, well-documented problem called <strong>benchmark contamination</strong> (or test-set leakage), and it's exactly why serious model releases (GPT-3, GPT-4, Llama) publish explicit decontamination analyses checking for overlap between their training data and eval benchmarks. An open benchmark score is never automatically trustworthy on its own — it's only meaningful once you know the model genuinely hasn't seen the answers.</p>
+        <p>For this project specifically: the training corpus is OpenWebText, a generic web scrape entirely unrelated to PIQA/HellaSwag/ARC's actual datasets (pulled separately via HuggingFace's <code>datasets</code> library) — nobody trained on their train splits here. What wasn't done, and is worth being honest about, is checking for <em>accidental</em> overlap — e.g. whether some webpage in OpenWebText happens to quote an ARC science question verbatim, since ARC's questions come from real school exams that do circulate on the open web. That's an unverified gap, not a claim of zero contamination.</p>
+        <div class="card" style="margin-top:12px;border-left:3px solid var(--accent)">
+          <h3 style="color:var(--accent-soft)">The scores themselves are the actual evidence here</h3>
+          <p>Even in a worst-case accidental-overlap scenario, memorizing specific answers needs either deliberate repeated training on that exact data, or enough model capacity and repetition to encode it robustly. A 50-150M model seeing a huge, diverse corpus for at most a couple billion tokens gets, at best, a handful of incidental exposures to any one snippet — nowhere near enough to memorize verbatim. If there were meaningful contamination here, scores would look anomalously high, not clustered right at the random-chance floor the way HellaSwag's did. That's indirect evidence against a contamination effect on <em>these results</em> — not proof there's zero overlap in the corpus, which is a different, stronger claim this project didn't verify.</p>
+        </div>
+        <p style="margin-top:12px">The broader lesson: an open, public benchmark is a tool with a real failure mode built into being open. A high score on a leaked benchmark measures memorization, not capability — which is exactly why this project treats near-floor scores as a legitimate, informative result instead of assuming any nonzero score must reflect real reasoning.</p>
       </div>
     </div>
   </section>

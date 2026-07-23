@@ -18,6 +18,10 @@ checkpoints/
 # run logs / GPU telemetry (operational, not portfolio content)
 logs/
 
+# lm-eval per-example sample dumps (~180MB total, regenerable — aggregate
+# scores in docs/phase5/eval_results.json are tracked)
+docs/phase5/eval_samples_*.json
+
 # Python
 __pycache__/
 *.py[cod]
