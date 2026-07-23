@@ -740,15 +740,15 @@
       <div class="loop-step">
         <div class="num">3</div>
         <div class="body">
-          <h4>Read the actual wrong answers — data ready, analysis pending</h4>
-          <p>Per-example output logging saved (<code>docs/phase5/eval_samples_*.json</code>) for the actual categorization — tokenization artifact, reasoning gap, or scale limitation. No teacher needed for this step.</p>
+          <h4>Read the actual wrong answers — done</h4>
+          <p>67.6% wrong on ARC-Easy for 150M, 72.1% for 77M — examples pulled and saved (<code>docs/phase5/arc_easy_errors_150m_500m.txt</code>). One objective, mechanical finding along the way: this project's 32K BPE tokenizer heavily fragments the science vocabulary these questions use — <code>photosynthesis</code> → 4 pieces, <code>haploid</code> → 4 pieces, <code>negatively-charged</code> → 4 pieces. A real, checkable fact worth weighing, not a claim about any specific question.</p>
         </div>
       </div>
       <div class="loop-step">
         <div class="num">4</div>
         <div class="body">
-          <h4>Decide on the feedback loop after seeing real results</h4>
-          <p>Targeted data generation needs the teacher's decode throughput (~81 tok/s, the slow regime measured in Phase 4) — worth scoping against what Step 2/3 actually show, not committing blind.</p>
+          <h4>Feedback loop — decided against, using the rule set in advance</h4>
+          <p>Before seeing any results, this plan committed to a deciding rule: run the loop only if scores show a few isolated weak spots in an otherwise-competent model, not broad near-floor performance. HellaSwag flat at the floor, PIQA barely above it, ARC-Easy's real trend still topping out at 32.4% — that's broad and low, not narrow gaps to patch. By the rule already set, the loop isn't run, which also avoids repeating Phase 4's teacher-cost tradeoff for a precondition that wasn't met anyway.</p>
         </div>
       </div>
     </div>
@@ -823,8 +823,8 @@
     <div class="qa-block" id="q-worth-it">
       <div class="qa-q">Given what Phase 4 found about the teacher's cost, is running the full feedback loop (Task 5.3-5.4) even worth it?</div>
       <div class="qa-a">
-        <p>Genuinely uncertain, same as Phase 4 — and worth deciding with real data in hand rather than in advance. The feedback loop's precondition is a model with <em>partial</em> competence and a few isolated weak spots to target. If Step 2's benchmarks come back near the random-chance floor across the board (a real possibility given this project's scale), that's a sign the model doesn't have isolated gaps to patch — it has a general scale limitation, which targeted synthetic data can't fix regardless of how much teacher time you spend generating it.</p>
-        <p>So the honest plan is: benchmark first, look at the actual failure patterns, and only then decide whether a small, scoped round of targeted data is worth the same kind of teacher-generation cost Phase 4 weighed — not commit to the full multi-round loop from <code>docs/plan.md</code> before knowing whether the precondition for it to work is even met.</p>
+        <p><strong>Decided against, with real data rather than in advance.</strong> Before any benchmarks ran, this project committed to a deciding rule specifically to avoid rationalizing after the fact: the feedback loop's precondition is a model with <em>partial</em> competence and a few isolated weak spots to target — not a model that's weak everywhere.</p>
+        <p>Checked against the actual results: HellaSwag flat at the ~25% floor across every checkpoint, PIQA barely above its ~50% floor, and even ARC-Easy's genuine, real trend with scale still tops out at 32.4%. That's broad, low performance across the board, not narrow gaps in an otherwise-competent model. By the rule already set before results existed, the loop isn't run — which also means not repeating Phase 4's teacher-cost tradeoff (targeted generation is decode-bound, ~81 tok/s) for a precondition that wasn't met anyway.</p>
       </div>
     </div>
 

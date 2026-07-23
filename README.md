@@ -16,7 +16,7 @@ A hands-on, end-to-end curriculum covering every step of the LLM training pipeli
 | 2. Tokenizer + Data Engineering | **Complete** |
 | 3. Scaling Law Experiments | **Complete** |
 | 4. Knowledge Distillation | **Complete** |
-| 5. Evaluation & Feedback Loop | **Up next** |
+| 5. Evaluation & Feedback Loop | **Complete** |
 
 **Phase 1 — complete:**
 - [x] Understand transformer architecture — see [`docs/how-transformers-work.html`](docs/how-transformers-work.html)
@@ -84,11 +84,11 @@ Understand knowledge distillation — hard labels, soft KL-divergence, temperatu
 ---
 
 ### Phase 5 — Evaluation & Feedback Loop (Weeks 7-8)
-Benchmark this project's actual checkpoints (no distilled model exists — see Phase 4) on a handful of standard tasks via a custom lm-eval-harness adapter, read the real wrong answers, and decide whether the targeted-data-and-retrain feedback loop is worth running given what these small models can realistically show.
+Benchmarked this project's actual checkpoints (no distilled model exists — see Phase 4) on PIQA/HellaSwag/ARC-Easy via a custom lm-eval-harness adapter, read the real wrong answers, and decided against running the targeted-data-and-retrain feedback loop — using a deciding rule committed to before any results existed, not rationalized afterward.
 
-**You'll understand:** why validation loss isn't the same as task performance, what the random-chance floor means for a model this size, and the full RLHF-style feedback loop from first principles.
+**You'll understand:** why validation loss isn't the same as task performance, what the random-chance floor means for a model this size, why open benchmarks aren't automatically trustworthy (contamination), and the full RLHF-style feedback loop from first principles.
 
-**Deliverable:** Real benchmark numbers for this project's own checkpoints, honest error analysis, and a scoped decision on the feedback loop. Not started yet — see [`docs/phase5/sprint-plan.md`](docs/phase5/sprint-plan.md).
+**Deliverable:** Real benchmark numbers (HellaSwag flat at the ~25% floor across every checkpoint; ARC-Easy shows a real, consistent climb with scale), honest error analysis, and a scoped decision against the feedback loop. See [`docs/phase5/sprint-plan.md`](docs/phase5/sprint-plan.md) and [`docs/phase5/evaluation.html`](docs/phase5/evaluation.html).
 
 ---
 
@@ -210,5 +210,5 @@ slm-from-scratch/
 - [`docs/phase3/results.md`](docs/phase3/results.md) — Phase 3 results: loss vs tokens and loss vs FLOPs plots across all 3 runs, the data table, and a real training-instability spike found in Run 2's curve.
 - [`docs/phase4/distillation.html`](docs/phase4/distillation.html) — Phase 4 explainer: hard vs soft labels, temperature scaling, KL divergence, the hybrid loss, and the teacher setup on this machine.
 - [`docs/phase4/sprint-plan.md`](docs/phase4/sprint-plan.md) — Phase 4 investigation: teacher setup (Qwen 3.6 35B-A3B, already downloaded locally), measured throughput, student size decision, and the teacher/student tokenizer-vocabulary mismatch that shaped the outcome.
-- [`docs/phase5/evaluation.html`](docs/phase5/evaluation.html) — Phase 5 explainer: what a benchmark is, the random-chance floor, error analysis, and the feedback loop. Not started yet.
-- [`docs/phase5/sprint-plan.md`](docs/phase5/sprint-plan.md) — Phase 5 plan: what's actually available to evaluate, the lm-eval-harness adapter needed, and scoping the feedback loop against Phase 4's teacher-cost lesson.
+- [`docs/phase5/evaluation.html`](docs/phase5/evaluation.html) — Phase 5 explainer: what a benchmark is, the random-chance floor, error analysis, benchmark contamination, and the feedback loop — with real results embedded.
+- [`docs/phase5/sprint-plan.md`](docs/phase5/sprint-plan.md) — Phase 5 plan and results: the lm-eval-harness adapter, real benchmark numbers, and the feedback-loop decision made against a rule set before any results existed.
