@@ -6,6 +6,8 @@ A hands-on, end-to-end curriculum covering every step of the LLM training pipeli
 
 **Hardware:** RTX 5070 Ti (16GB VRAM) · **Timeline:** ~2 months, 4-6 hrs/day
 
+**New here and want the concepts without the project-specific narrative?** See the [general guide](guide/) — a tool-agnostic, modular reference (transformers, tokenization, fine-tuning, distillation, scaling laws, evaluation, and more) you can look up topic by topic, not read start to finish.
+
 ---
 
 ## Current Status
