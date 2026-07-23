@@ -36,6 +36,8 @@ For each training sample: run it through the teacher, capture the top-K logits (
 
 Storage estimate from the plan: ~50-100GB for 1B tokens of top-K logits. Disk has 641GB free — no constraint here. Time estimate depends entirely on Step 0's measured teacher throughput.
 
+**Deliberately offline, not online, and this is why:** the teacher generates and caches logits to disk in this step, then exits — it is never loaded again during Step 4's actual training. This is a hard requirement given the hardware, not just a convenience: this card can't hold the teacher (~3-4GB, CPU-offloaded MoE) and the student (75M ≈ 5GB, 150M ≈ 6.7GB, per Phase 3's measurements) in VRAM at once *and* run both efficiently at the same time as a live "online" distillation setup would need. Splitting generation and training into separate sequential phases sidesteps that entirely — neither phase needs more VRAM than Phase 3 already proved fits comfortably. The tradeoff moves elsewhere: disk I/O throughput for streaming cached logits during training becomes the thing to watch instead of VRAM contention.
+
 ---
 
 ## Step 3 — Distillation loss variants — this is the "you write it" boundary
