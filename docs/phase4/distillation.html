@@ -757,7 +757,12 @@
 
     <div class="card" style="margin-top:16px;border-left:3px solid var(--accent)">
       <h3 style="color:var(--accent-soft)">Why that matters for a 16GB card</h3>
-      <p>A dense 35B model at 4-bit quantization needs ~17.5GB just for weights — already over this card's 16.3GB. But an MoE only needs its <em>active</em> experts fast (on GPU); the rest can sit in system RAM and get swapped in on demand. This machine already has a config tuned exactly for that: CPU-offloaded experts, attention on GPU, using only ~3-4GB of VRAM. See <a href="sprint-plan.md" style="color:var(--accent-soft)">sprint-plan.md</a> for the current state of getting it actually running.</p>
+      <p>A dense 35B model at 4-bit quantization needs ~17.5GB just for weights — already over this card's 16.3GB. But an MoE only needs its <em>active</em> experts fast (on GPU); the rest can sit in system RAM and get swapped in on demand. This machine already has a config tuned exactly for that: CPU-offloaded experts, attention on GPU, using only ~3-4GB of VRAM.</p>
+    </div>
+
+    <div class="card" style="margin-top:14px;border-left:3px solid var(--green)">
+      <h3 style="color:var(--green)">Verified working, with real measured throughput</h3>
+      <p>The serving container is up and healthy, and real requests confirm it: at a realistic ~1300-token prompt (matching this project's <code>block_size=1024</code>), prompt processing runs at <strong>1119.9 tok/s</strong>, while decode runs at <strong>81.3 tok/s</strong> — the latter matching the recalled "~80 tok/s" almost exactly. Batched/prefill is ~14x faster than decode, confirming the distinction in the Q&amp;A below wasn't just theory. See <a href="sprint-plan.md" style="color:var(--accent-soft)">sprint-plan.md</a> for the full numbers and the revised Task 2 time estimate.</p>
     </div>
   </section>
 
@@ -771,8 +776,8 @@
       <div class="loop-step">
         <div class="num">1</div>
         <div class="body">
-          <h4>Get the teacher serving, measure real throughput</h4>
-          <p>A Docker setup for this exact model already exists on this machine but needs a driver-mismatch fix first (non-blocking, deferred). Once up: measure <em>batched, teacher-forced</em> throughput specifically — not interactive chat speed, which is a different, much slower number that doesn't apply to logit generation.</p>
+          <h4>Teacher serving, real throughput measured — done</h4>
+          <p>The Docker driver-mismatch fix (stale CDI spec from an NVIDIA driver upgrade) is applied. Container's healthy; real requests confirm 1119.9 tok/s batched/prefill vs 81.3 tok/s decode. Local generation is viable — no need for the cloud fallback.</p>
         </div>
       </div>
       <div class="loop-step">
@@ -833,7 +838,7 @@
       <div class="qa-a">
         <p>That 80 tok/s number describes <strong>interactive chat generation</strong> — one token at a time, autoregressive, waiting on memory bandwidth for the CPU-offloaded MoE experts at every single step. That is not the operation Task 2 actually needs.</p>
         <p>Generating teacher logits for distillation doesn't require generating any new text at all. The target tokens are already known (they're your existing training corpus) — this is a <strong>teacher-forced forward pass</strong>: feed in a whole batch of already-tokenized sequences at once and read off the logits at every position in a single pass, the same way a training step's forward pass works. That's a fundamentally different, typically much higher, throughput regime than token-by-token decode speed, because it batches over the sequence dimension instead of waiting on one token at a time.</p>
-        <p>Whether it's fast <em>enough</em> for a useful token budget is still a real open question — it just needs its own measurement (batched prefill throughput), not a reuse of the 80 tok/s decode number.</p>
+        <p>This is now measured, not hypothetical: a realistic ~1300-token prompt on this exact setup gets <strong>1119.9 tok/s</strong> prompt processing vs <strong>81.3 tok/s</strong> decode — the decode number landing almost exactly on the recalled "~80 tok/s," confirming that figure really was decode speed all along. At the measured prefill rate, 200M tokens of logit generation is roughly 2 days, not the ~29 days a decode-speed estimate would have implied. See <a href="sprint-plan.md" style="color:var(--accent-soft)">sprint-plan.md</a> for the full numbers.</p>
       </div>
     </div>
   </section>

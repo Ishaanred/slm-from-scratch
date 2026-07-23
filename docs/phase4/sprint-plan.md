@@ -6,21 +6,30 @@
 
 ---
 
-## Step 0 — Teacher setup, revised from what's actually on this machine
+## Step 0 — Teacher setup — done, verified working
 
-`docs/plan.md`'s original Task 4.1 assumed setting up llama.cpp from scratch. Checked directly instead of assuming:
+`docs/plan.md`'s original Task 4.1 assumed setting up llama.cpp from scratch. What's actually true, checked directly rather than assumed:
 
-- **The teacher model is already downloaded**: `~/AI/models/hub/models--unsloth--Qwen3.6-35B-A3B-GGUF`, 35GB. No re-download needed.
-- **"A3B" means ~3B active parameters per token** (MoE) — inference compute cost is much closer to a 3B dense model than a 35B one, which matters a lot for whether this is usable on a 16GB card.
-- **Ollama is already installed** (`/usr/local/bin/ollama`) and working — it already serves other local models (`llama3.2`, `deepseek-coder`, `bge-m3` per `ollama list`). Ollama bundles its own llama.cpp-based inference engine, so there's no need to separately build the `llama-cpp-turboquant` source checkout that's also present on this machine — that's a parallel, unbuilt path, not a dependency.
-- **Not yet done**: the Qwen 3.6 35B-A3B model isn't registered in Ollama's own model store yet (absent from `ollama list`) — it exists as a raw GGUF in the HuggingFace cache, not as something Ollama can serve directly. Needs `ollama create <name> -f Modelfile` pointing at that GGUF path, or an equivalent pull.
-- **Not yet verified**: whether it actually runs at a usable speed on the 5070 Ti. A 35GB model file doesn't fit in 16GB VRAM as a single block — llama.cpp/Ollama can offload inactive layers to system RAM, and the MoE's low active-param count should make this far more tractable than a dense 35B model, but "should be more tractable" is a claim to test, not assume, given this project's track record this week of doc claims not matching measured reality (VRAM checks, throughput checks, crash isolation all mattered).
+- **The teacher model is already downloaded**: `~/AI/models/hub/models--unsloth--Qwen3.6-35B-A3B-GGUF`, 35GB (specifically the `UD-Q4_K_XL` quant). No re-download needed.
+- **"A3B" means ~3B active parameters per token** (MoE) — the model has a purpose-built config (`models-preset.ini`, `n-gpu-layers=10`, CPU-offloaded experts, attention on GPU) using only ~3-4GB VRAM.
+- **The actual serving path is Docker, not Ollama.** An existing image (`llama-cpp-turboquant:server-cuda13`) and container (`llama-turboquant-server`) were built for this exact model on this exact GPU. The Ollama route considered earlier is unnecessary — this container already does the job.
+- **Fixed**: the container failed to start due to a stale NVIDIA CDI device spec (built for driver 580.159.03, host had since upgraded to 595.71.05). Fixed with `sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml`, regenerating against the current driver. Container now starts clean and reports healthy.
+- **Verified working end-to-end**: sent real chat completion requests through `http://localhost:8081/v1/chat/completions` (model `Qwen3.6-35B-A3B-GGUF-UD-Q4_K_XL`) and got correct responses.
 
-**Known, deferred (non-blocking) issue**: there's an existing, purpose-built Docker setup for this exact model (`llama-cpp-turboquant:server-cuda13`, a `models-preset.ini` entry tuned specifically for this GPU — CPU-offloaded MoE experts, ~3-4GB VRAM, 8192 ctx). It currently fails to start because the NVIDIA driver was upgraded (580.159.03 → 595.71.05) since it was last used, and Docker's CDI device spec is stale. Fix is a one-line `nvidia-ctk cdi generate` re-run (needs sudo) — not attempted yet, deliberately deferred.
+**Measured throughput (2026-07-23), not guessed:**
 
-**Assuming that's fixed, planning proceeds as follows.** The ~80 tok/s figure recalled for this setup almost certainly describes **interactive chat decode speed** (one token at a time, autoregressive, memory-bandwidth-bound by the CPU-offloaded MoE experts) — **not** the throughput that matters for Task 4.2. Teacher-logit generation for distillation doesn't need autoregressive generation at all: it's a teacher-forced forward pass over already-tokenized training sequences (the target tokens are already known), which batches over the sequence dimension the same way a training forward pass does. That's a fundamentally different, likely much higher, throughput number than single-token decode speed. **Don't reuse the 80 tok/s figure to estimate Task 4.2's real duration** — it needs its own measurement, batched prompt/prefill throughput, once the container is back up.
+| Request | Prompt size | Prompt processing (prefill) | Decode |
+|---|---|---|---|
+| Small | 20 tokens | 98.5 tok/s | 133.8 tok/s |
+| Realistic (matches this project's block_size=1024) | 1312 tokens | **1119.9 tok/s** | **81.3 tok/s** |
 
-**First real action once unblocked**: get the container serving, measure *batched logit-extraction* throughput specifically (not decode tok/s), and use that number (not 80) to size Task 2's actual token budget.
+This confirms the hypothesis from before the fix: the recalled "~80 tok/s" figure was decode speed (81.3 tok/s measured, near-exact match) — not the number that matters for Task 2. **Batched/prefill throughput is ~14x faster than decode** (1119.9 vs 81.3 tok/s) at a realistic sequence length, because prefill parallelizes across the sequence dimension instead of paying the CPU-offloaded-expert cost one token at a time. This was a single sequential request, not even using the server's available `n_parallel=4` slots — real batched throughput across multiple concurrent sequences could be higher still, worth testing when Step 2 is actually built.
+
+**Revised Task 2 time estimate**, using the measured 1119.9 tok/s (conservative, single-request) instead of the old 80 tok/s guess:
+- 200M tokens (disk-constrained fallback from `docs/plan.md`): **~50 hours (~2 days)** — not the ~29 days a decode-speed estimate would have implied
+- 1B tokens (the plan's upper target): **~248 hours (~10 days)**
+
+These are still real numbers to revisit once Step 2's actual batching is built (it'll very likely beat single-request prefill), but they're honest planning inputs now, not speculation.
 
 ---
 
@@ -56,8 +65,8 @@ Distilled student at the chosen size, plus a from-scratch baseline on the same d
 
 ## Order of work
 
-1. Step 0 (teacher setup + throughput measurement) — must happen first, decides local-vs-cloud for everything downstream
+1. ~~Step 0 (teacher setup + throughput measurement)~~ — **done**. Container running, real batched throughput measured (1119.9 tok/s prefill vs 81.3 tok/s decode). Local generation is viable — no need for the RunPod cloud fallback.
 2. Step 1 (student size) — quick decision, informed by Phase 3's data
-3. Step 2 (logit generation harness) — depends on Step 0's throughput number to estimate real generation time
+3. Step 2 (logit generation harness) — build against `http://localhost:8081/v1/chat/completions` (or a lower-level completion endpoint with logprobs), using the measured throughput to size the real token budget
 4. Step 3 (loss variants, small-scale comparison) — yours to implement, infra provided
 5. Step 4 (full run + baseline) — the bulk of the compute time
