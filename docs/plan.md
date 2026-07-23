@@ -125,36 +125,17 @@ Runs 1 and 2 show the within-size trend (does more data help). Runs 1 and 3 show
 
 ---
 
-## Phase 4: Knowledge Distillation — "The Student Surpasses the Master"
+## Phase 4: Knowledge Distillation — "The Student Surpasses the Master" ✓ COMPLETE
 
-**Objective:** Distill from Qwen 35B MoE (or DeepSeek) into your 150M-500M student.
+**Objective:** Understand knowledge distillation — the concepts, and what actually running it requires in practice.
 
-### Task 4.1: Teacher setup
-- **Primary:** Qwen 3.6 35B MoE via llama.cpp 4-bit on 5070 Ti
-- **Batch mode:** Generate logits while you sleep, cache to disk
-- **Cloud fallback:** RunPod 5090 for heavy logit generation (10 hrs should cover 200M-500M tokens)
+**What this phase covers:** hard vs. soft labels, temperature scaling, KL divergence, and the hybrid loss (see `docs/phase4/distillation.html`), plus a real infrastructure investigation on this machine's own hardware — teacher setup (Qwen 3.6 35B-A3B MoE via a local Docker/llama.cpp server), measured throughput (prefill vs. decode, ~14x apart), a genuine tokenizer-vocabulary mismatch between teacher (248,320 tokens) and student (32,000 tokens) that rules out direct soft-label KL distillation on this architecture, and a student size decision (300M, measured to fit cleanly) — all documented in `docs/phase4/sprint-plan.md`.
 
-### Task 4.2: Generate teacher logits
-- For each training sample, get teacher's full logit distribution (top-K, K=8192)
-- Storage: ~50-100GB for 1B tokens. Sample 200M tokens if disk-constrained.
-- Save as memory-mapped .npy files for fast loading during training
+**Key finding:** the teacher/student tokenizer mismatch means true soft-label distillation isn't viable here without either re-tokenizing to a shared (248K-token) vocabulary — which doesn't fit this hardware at any usable batch size — or falling back to a much weaker hard-label-only signal. Combined with the real generation cost (teacher-forced logit extraction is fast, ~1120 tok/s measured, but still hours-to-a-day+ of sustained GPU/CPU load for a meaningful token budget), running a full production distillation here wasn't worth the compute and electricity for the signal it would likely produce.
 
-### Task 4.3: Distillation loss variants
-1. **Hard distillation:** CE with teacher's top-1 token
-2. **Soft distillation:** KL divergence (T=2-4)
-3. **Hybrid:** 0.5 × KL + 0.5 × CE (learn distribution + true next token)
-- Compare all three on 75M/100M tokens first
+A real, task-focused distillation project (e.g. distilling toward a specific application like customer support) is the natural place to actually run this, where the teacher/student vocabulary can be chosen to match from the start and the target task justifies the compute.
 
-### Task 4.4: Train the distilled student
-- 150M student with best distillation method
-- Baseline: same model from scratch on same data
-- Compare: loss curves, benchmarks, generation quality
-
-### Task 4.5: Progressive distillation (stretch)
-- Qwen 35B → 1.5B → 500M → 150M
-- Does multi-hop preserve quality? (Most people skip this — you'll actually know.)
-
-**Deliverable:** Distilled 150M model beating from-scratch baseline. Understanding of KL divergence at scale.
+**Deliverable:** Understanding of distillation concepts and the real infrastructure constraints of doing it on this hardware — not a trained distilled model.
 
 ---
 

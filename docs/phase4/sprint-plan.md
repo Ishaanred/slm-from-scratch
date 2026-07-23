@@ -1,8 +1,6 @@
 # Phase 4 Sprint Plan — Knowledge Distillation
 
-**Goal:** Distill a large teacher (Qwen 3.6 35B-A3B MoE) into your own small student, and check whether the distilled student actually beats a from-scratch baseline trained on the same data. Per `docs/plan.md`, deliverable is a distilled 150M model beating the from-scratch baseline, plus real understanding of KL divergence at scale.
-
-**Not started yet.** This plan is scoping only — nothing built.
+**Goal:** Understand knowledge distillation conceptually and practically — what running it actually requires on real hardware, not just the theory. This doc records a real infrastructure investigation: the teacher setup, measured throughput, a genuine architectural blocker (tokenizer mismatch), and the reasoning behind the decisions made, ahead of and instead of a full production distillation run.
 
 ---
 
@@ -46,38 +44,43 @@ These are still real numbers to revisit once Step 2's actual batching is built (
 | **300M** | **268.1M** | **9.60 GB — measured** | **~36,700 tok/s — measured** | **~3.8h** |
 | 500M | 555.5M | 11.53 GB @ batch=4 — measured (OOMs at batch=8) | ~16,000 tok/s — estimated only | ~8.5h |
 
-**Decided: 300M** (268.1M actual params, 16L/16H/1024E). Fits comfortably at the full batch=8 (9.60GB of 16.3GB, no batch-size compromise needed unlike 500M), and will be the largest model this project has trained — appropriate, since distillation is meant to let a smaller model punch above its raw parameter count, and 300M is the ceiling where that's still true without fighting the hardware for room.
+**Decided: 300M** (268.1M actual params, 16L/16H/1024E). Fits comfortably at the full batch=8 (9.60GB of 16.3GB, no batch-size compromise needed unlike 500M), and would have been the largest model this project trained, had a full run gone ahead.
 
 ---
 
-## Step 2 — Generate teacher logits (infrastructure, not the learning-objective piece)
+## The blocker that changed the plan: teacher/student tokenizer mismatch
 
-For each training sample: run it through the teacher, capture the top-K logits (`docs/plan.md` says K=8192), cache to disk as memory-mapped `.npy` — same corpus this project already has tokenized (`data/phase2/full/`, 32K BPE). This is data-pipeline plumbing (batch inference, caching, memmap I/O) — happy to write this the way `src/phase3/train.py`'s harness was written.
+Checked directly via the GGUF metadata rather than assumed:
 
-Storage estimate from the plan: ~50-100GB for 1B tokens of top-K logits. Disk has 641GB free — no constraint here. Time estimate depends entirely on Step 0's measured teacher throughput.
+```
+Teacher (Qwen 3.6 35B-A3B) vocabulary: 248,320 tokens
+Student (this project's 32K BPE tokenizer): 32,000 tokens
+```
 
-**Deliberately offline, not online, and this is why:** the teacher generates and caches logits to disk in this step, then exits — it is never loaded again during Step 4's actual training. This is a hard requirement given the hardware, not just a convenience: this card can't hold the teacher (~3-4GB, CPU-offloaded MoE) and the student (75M ≈ 5GB, 150M ≈ 6.7GB, per Phase 3's measurements) in VRAM at once *and* run both efficiently at the same time as a live "online" distillation setup would need. Splitting generation and training into separate sequential phases sidesteps that entirely — neither phase needs more VRAM than Phase 3 already proved fits comfortably. The tradeoff moves elsewhere: disk I/O throughput for streaming cached logits during training becomes the thing to watch instead of VRAM contention.
+This isn't a small mismatch — token ID 500 in the teacher's vocabulary and token ID 500 in the student's refer to completely unrelated subwords. Real, direct soft-label KL divergence distillation (comparing full probability distributions token-for-token) requires both models to share a vocabulary, which these don't.
 
----
+**Tested the fix directly rather than assume it would work:** switching the 300M architecture to the teacher's 248,320-token vocabulary (embeddings aren't tied in this project's `model.py`, so vocab size cost hits both the input embedding table and the output head) balloons the model to **711.1M actual params — which OOMs on this 16.3GB card at every batch size down to 1.** Confirmed measured, not estimated. Re-tokenizing to match the teacher isn't viable on this hardware at any reasonable model size.
 
-## Step 3 — Distillation loss variants — this is the "you write it" boundary
+The remaining options, and why none were run:
+- **Sequence-level distillation** (teacher generates text, retokenize with the student's own tokenizer) — sidesteps the vocab mismatch, but requires the teacher to *generate* new text, which is decode-bound (~81 tok/s measured) rather than the fast prefill regime — a meaningful token budget is back to weeks, not hours. It also risks the student learning a narrower distribution than real web text (a known failure mode when training on synthetic data at scale).
+- **Hard-label-only distillation** (detokenize the teacher's top-1 token, retokenize with the student's tokenizer) — the one approach that's actually fast (prefill-bound, ~1120 tok/s measured) and fits this hardware cleanly. But it's a weak signal: it only differs from ordinary training in the specific positions where the teacher's top-1 guess disagrees with the real next token in the corpus. Literature on hard-label-only distillation shows it's often a marginal improvement at best.
 
-Per this project's own `CLAUDE.md`: *"Distillation loss implementation — The KL divergence, temperature scaling, hybrid loss. You write it. Claude can explain the math."* Same boundary as `train_step()` in Phases 1-3. I'll set up the surrounding harness (data loading, training loop, checkpointing) exactly like before, but the actual loss function — hard CE, soft KL with temperature, or the hybrid mix — is yours to implement, same pattern as `configure_optimizers`/`train_step` in the existing `model.py`/`train.py` files.
-
-`docs/plan.md`'s Task 4.3 says compare all three variants on a small token budget (75-100M tokens) before committing to one for the full run — worth keeping that as the actual first training step here, not skipping to the full-scale run.
-
----
-
-## Step 4 — Train the real distilled student + baseline
-
-Distilled student at the chosen size, plus a from-scratch baseline on the same data (same architecture, same tokens, no teacher) — the actual comparison the whole phase is testing. Compare loss curves, and whatever benchmarks Phase 5 ends up using.
+Also checked two "free" throughput levers before considering token-budget cuts, both came back negative, real findings worth keeping: sending concurrent requests (using the server's `n_parallel=4`) made aggregate throughput *worse* (~255 tok/s vs ~1120 tok/s for one sequential request), and doubling the server's CPU thread allocation (8 → 15) made no measurable difference — both point at memory bandwidth, not CPU core count or request batching, as the actual ceiling.
 
 ---
 
-## Order of work
+## Why a full production run wasn't done here
 
-1. ~~Step 0 (teacher setup + throughput measurement)~~ — **done**. Container running, real batched throughput measured (1119.9 tok/s prefill vs 81.3 tok/s decode). Local generation is viable — no need for the RunPod cloud fallback.
-2. ~~Step 1 (student size)~~ — **done**. 300M (268.1M actual params), fits at full batch=8 (9.60GB), ~36,700 tok/s measured.
-3. Step 2 (logit generation harness) — build against `http://localhost:8081/v1/chat/completions` (or a lower-level completion endpoint with logprobs), using the measured throughput to size the real token budget. Remember to restart the teacher container first — it was stopped to free VRAM for Step 1's testing.
-4. Step 3 (loss variants, small-scale comparison) — yours to implement, infra provided
-5. Step 4 (full run + baseline) — the bulk of the compute time
+Given the tokenizer mismatch rules out the strongest version of distillation (soft-label KL) on this hardware, and the remaining viable option (hard-label-only) carries a genuinely weak, uncertain signal — running a multi-hour-to-day+ generation job for a result that might well be indistinguishable from noise wasn't a good trade of compute and electricity for this project. The conceptual understanding (`docs/phase4/distillation.html`) and this real infrastructure investigation — teacher setup, measured throughput, the vocabulary blocker, the student-size decision — are this phase's actual output.
+
+A task-focused distillation project (distilling toward a specific application, e.g. customer support) is a better place to actually run this: the teacher and student tokenizers can be chosen to match from the start, and a concrete downstream task gives a much clearer signal of whether distillation is worth its cost than a general next-token-prediction comparison does.
+
+---
+
+## What a full run would have required (for reference)
+
+1. ~~Teacher setup + throughput measurement~~ — done. Container running, real throughput measured (1119.9 tok/s prefill vs 81.3 tok/s decode). Local generation would have been viable, no cloud fallback needed.
+2. ~~Student size~~ — decided. 300M (268.1M actual params), fits at full batch=8 (9.60GB), ~36,700 tok/s measured.
+3. Generate + cache teacher logits (or hard-label top-1 tokens, given the vocab blocker) — data-pipeline plumbing, would have been built the way `src/phase3/train.py`'s harness was.
+4. Distillation loss implementation — per this project's own `CLAUDE.md`, this is the "you write it" boundary, same as `train_step()`/`configure_optimizers` in earlier phases.
+5. Train the distilled student + from-scratch baseline, compare.

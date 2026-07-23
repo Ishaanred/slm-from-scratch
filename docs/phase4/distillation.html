@@ -784,21 +784,21 @@
         <div class="num">2</div>
         <div class="body">
           <h4>Student size — decided: 300M</h4>
-          <p>268.1M actual params (16L/16H/1024E), fits at the full batch=8 (9.60GB of 16.3GB, measured), ~36,700 tok/s measured. Confirming teacher and student never share VRAM (previous step) removed size as a hardware constraint, so the decision became "how big is worth it" rather than "what barely fits" — this will be the largest model this project has trained.</p>
+          <p>268.1M actual params (16L/16H/1024E), fits at the full batch=8 (9.60GB of 16.3GB, measured), ~36,700 tok/s measured. Confirming teacher and student never share VRAM (previous step) removed size as a hardware constraint, so the decision became "how big is worth it" rather than "what barely fits."</p>
         </div>
       </div>
       <div class="loop-step">
         <div class="num">3</div>
         <div class="body">
-          <h4>Generate + cache teacher logits</h4>
-          <p>Top-K (K=8192) logits per token, over the same tokenized corpus from Phase 2/3, saved as memory-mapped files. Infrastructure — happy to write this part.</p>
+          <h4>Found: a real tokenizer/vocabulary blocker</h4>
+          <p>Checked directly via the GGUF metadata: the teacher's vocabulary is 248,320 tokens, this project's is 32,000. Tested the fix (re-tokenizing the 300M student to match) rather than assume it'd work — it balloons the model to 711.1M params, which OOMs on this card at every batch size down to 1. True soft-label KL distillation isn't viable on this hardware without either that (doesn't fit) or a much weaker hard-label-only signal.</p>
         </div>
       </div>
       <div class="loop-step">
         <div class="num">4</div>
         <div class="body">
-          <h4>Compare loss variants, then train for real</h4>
-          <p>Small-scale comparison of hard/soft/hybrid first, then the full distilled run plus a from-scratch baseline on the same data — the actual test this whole phase exists to run.</p>
+          <h4>What a full run would have required</h4>
+          <p>Generate + cache teacher logits (or hard-label top-1 tokens, given the blocker above), compare loss variants (yours to implement, per the card above), then train the distilled student against a from-scratch baseline. See <a href="sprint-plan.md" style="color:var(--accent-soft)">sprint-plan.md</a> for why this wasn't carried through to a full run here, and where a task-focused distillation project would be a better place to actually do it.</p>
         </div>
       </div>
     </div>

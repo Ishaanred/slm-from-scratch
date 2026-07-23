@@ -15,8 +15,8 @@ A hands-on, end-to-end curriculum covering every step of the LLM training pipeli
 | 1. NanoGPT — build a transformer from scratch | **Complete** |
 | 2. Tokenizer + Data Engineering | **Complete** |
 | 3. Scaling Law Experiments | **Complete** |
-| 4. Knowledge Distillation | **Up next** |
-| 5. Evaluation & Feedback Loop | Not started |
+| 4. Knowledge Distillation | **Complete** |
+| 5. Evaluation & Feedback Loop | **Up next** |
 
 **Phase 1 — complete:**
 - [x] Understand transformer architecture — see [`docs/how-transformers-work.html`](docs/how-transformers-work.html)
@@ -75,11 +75,11 @@ Run 10 controlled training runs across model sizes (75M, 150M, 300M) and token c
 ---
 
 ### Phase 4 — Knowledge Distillation (Weeks 5-7)
-Distill Qwen 3.6 35B MoE into a 150M–300M student using hard labels, soft KL-divergence, and a hybrid loss. Compare against a from-scratch baseline trained on the same data.
+Understand knowledge distillation — hard labels, soft KL-divergence, temperature scaling, and the hybrid loss — plus a real infrastructure investigation: teacher setup (Qwen 3.6 35B-A3B MoE, local Docker/llama.cpp), measured throughput, and a genuine teacher/student tokenizer-vocabulary mismatch that rules out soft-label distillation on this hardware.
 
-**You'll understand:** why distillation works, what KL divergence means at scale, and when it's worth it.
+**You'll understand:** why distillation works, what KL divergence means at scale, and why teacher/student vocabulary compatibility is a real constraint, not a detail — checked directly rather than assumed.
 
-**Deliverable:** A distilled 150M model beating the from-scratch baseline on benchmarks.
+**Deliverable:** Conceptual understanding plus the real hardware constraints discovered. See [`docs/phase4/sprint-plan.md`](docs/phase4/sprint-plan.md) for why a full production run wasn't the right trade of compute here, and where a task-focused distillation project would be.
 
 ---
 
@@ -209,4 +209,4 @@ slm-from-scratch/
 - [`docs/phase3/scaling-laws.html`](docs/phase3/scaling-laws.html) — Phase 3 explainer: what a scaling law is, FLOPs, the Chinchilla rule, undertrained vs overtrained, and the 3-run experiment design.
 - [`docs/phase3/results.md`](docs/phase3/results.md) — Phase 3 results: loss vs tokens and loss vs FLOPs plots across all 3 runs, the data table, and a real training-instability spike found in Run 2's curve.
 - [`docs/phase4/distillation.html`](docs/phase4/distillation.html) — Phase 4 explainer: hard vs soft labels, temperature scaling, KL divergence, the hybrid loss, and the teacher setup on this machine.
-- [`docs/phase4/sprint-plan.md`](docs/phase4/sprint-plan.md) — Phase 4 plan: teacher setup (Qwen 3.6 35B-A3B, already downloaded locally), student size, logit-generation pipeline, and the distillation-loss learning boundary. Not started yet.
+- [`docs/phase4/sprint-plan.md`](docs/phase4/sprint-plan.md) — Phase 4 investigation: teacher setup (Qwen 3.6 35B-A3B, already downloaded locally), measured throughput, student size decision, and the teacher/student tokenizer-vocabulary mismatch that shaped the outcome.
