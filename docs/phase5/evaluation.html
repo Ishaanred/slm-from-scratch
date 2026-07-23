@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 5: Evaluation &amp; Feedback Loop</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --sidebar-w: 240px;
+    --bg: #0f1117;
+    --surface: #1e293b;
+    --border: #1e293b;
+    --border-light: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --dim: #64748b;
+    --accent: #818cf8;
+    --accent-soft: #a5b4fc;
+    --green: #34d399;
+    --pink: #f472b6;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --purple: #c084fc;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+    padding-left: var(--sidebar-w);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    background: #0b0e15;
+    padding: 24px 0 40px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-logo {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .sidebar-logo span {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .sidebar-logo p {
+    font-size: 0.72rem;
+    color: var(--dim);
+    margin-top: 2px;
+  }
+
+  .nav-group { margin-bottom: 6px; }
+
+  .nav-group-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dim);
+    padding: 10px 20px 4px;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 20px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+
+  .nav-link:hover {
+    color: var(--text);
+    background: rgba(129,140,248,0.06);
+  }
+
+  .nav-link.active {
+    color: var(--accent-soft);
+    border-left-color: var(--accent);
+    background: rgba(129,140,248,0.08);
+  }
+
+  .badge {
+    font-size: 0.62rem;
+    background: #1a2e1a;
+    color: #86efac;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-weight: 600;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .badge.todo { background: #3b1c00; color: #fdba74; }
+
+  /* sidebar scrollbar (match Phase 1-4) */
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+  /* PHASE SWITCHER (dropdown) */
+  .phase-dd { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px; }
+  .phase-dd > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 9px; padding: 8px 20px; font-size: 0.8rem; font-weight: 700; color: var(--accent-soft); }
+  .phase-dd > summary::-webkit-details-marker { display: none; }
+  .phase-dd > summary .chev { margin-left: auto; color: var(--dim); font-size: 0.65rem; transition: transform 0.15s; }
+  .phase-dd[open] > summary .chev { transform: rotate(90deg); }
+  .phase-dd-body { padding-top: 4px; }
+  .pnum { display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px; border-radius: 5px; background: #1e293b; color: var(--dim); font-size: 0.68rem; font-weight: 700; flex-shrink: 0; }
+  .phase-dd > summary .pnum { background: #312e81; color: var(--accent-soft); }
+  .nav-link.phase { display: flex; align-items: center; gap: 9px; font-weight: 600; }
+  .nav-link.phase.active { color: var(--accent-soft); border-left-color: var(--accent); background: rgba(129,140,248,0.08); }
+  .nav-link.phase.active .pnum { background: #312e81; color: var(--accent-soft); }
+  .nav-link.phase.soon { color: var(--dim); cursor: default; }
+  .nav-link.phase.soon:hover { background: transparent; color: var(--dim); }
+
+  /* MAIN */
+  .main {
+    margin: 0 auto;
+    width: 100%;
+    max-width: 1180px;
+    padding: 0 56px 120px;
+  }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    body { padding-left: 0; }
+    .main { padding: 0 20px 80px; }
+  }
+
+  /* HERO */
+  .hero {
+    padding: 64px 0 40px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .hero-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  .hero h1 {
+    font-size: 2.4rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, #818cf8, #a78bfa, #f472b6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1.2;
+    margin-bottom: 14px;
+  }
+
+  .hero p {
+    font-size: 1rem;
+    color: var(--muted);
+    max-width: 560px;
+  }
+
+  /* SECTIONS */
+  .section { padding-top: 72px; }
+
+  .section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .section h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 14px;
+    scroll-margin-top: 24px;
+  }
+
+  .section p {
+    color: var(--muted);
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+  }
+
+  .section p strong { color: var(--text); }
+
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.84em;
+    color: var(--accent-soft);
+    background: var(--surface);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* ANALOGY */
+  .analogy {
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin-top: 18px;
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+
+  .analogy strong { color: var(--accent-soft); }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 18px;
+    margin-top: 14px;
+  }
+
+  .card h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-bottom: 6px;
+  }
+
+  .card p { font-size: 0.875rem; color: var(--muted); margin: 0; }
+
+  /* PIPELINE */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+  }
+
+  .pipe-box {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-size: 0.83rem;
+    color: var(--text);
+    text-align: center;
+    flex: 1;
+    min-width: 90px;
+  }
+
+  .pipe-box.hi-orange {
+    background: var(--surface);
+    border-color: var(--accent);
+    color: var(--accent-soft);
+  }
+
+  .pipe-arrow { color: #475569; font-size: 1.1rem; flex-shrink: 0; }
+
+  /* COMPARE PHASE GRID */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 20px;
+  }
+
+  .compare-card {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 18px;
+  }
+
+  .compare-card.phase4 { border-top: 3px solid var(--pink); }
+  .compare-card.phase5 { border-top: 3px solid var(--blue); }
+
+  .compare-card .phase-tag {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .compare-card.phase4 .phase-tag { color: var(--pink); }
+  .compare-card.phase5 .phase-tag { color: var(--blue); }
+
+  .compare-card h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 8px;
+  }
+
+  .compare-card ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .compare-card ul li {
+    font-size: 0.82rem;
+    color: var(--muted);
+    padding-left: 14px;
+    position: relative;
+  }
+
+  .compare-card ul li::before {
+    content: '·';
+    position: absolute;
+    left: 0;
+    color: var(--dim);
+  }
+
+  @media (max-width: 700px) {
+    .compare-grid { grid-template-columns: 1fr; }
+  }
+
+  /* LOOP STEPS */
+  .loop-steps {
+    display: flex;
+    flex-direction: column;
+    margin-top: 18px;
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .loop-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .loop-step:last-child { border-bottom: none; }
+
+  .loop-step .num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 2px;
+    background: #312e81;
+    color: var(--accent-soft);
+  }
+
+  .loop-step .body h4 { font-size: 0.9rem; font-weight: 600; color: #f1f5f9; margin-bottom: 3px; }
+  .loop-step .body p { font-size: 0.82rem; color: var(--dim); margin: 0; }
+
+  /* TABLE */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 18px;
+    font-size: 0.84rem;
+  }
+
+  th {
+    background: var(--surface);
+    color: var(--muted);
+    text-align: left;
+    padding: 9px 13px;
+    font-weight: 600;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  td {
+    padding: 9px 13px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+
+  td:first-child { color: var(--muted); }
+  tr:last-child td { border-bottom: none; }
+
+  .good { color: var(--green); }
+  .bad  { color: var(--red); }
+  .mid  { color: var(--yellow); }
+
+  /* RANDOM-CHANCE BAR */
+  .chance-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+    font-size: 0.82rem;
+  }
+  .chance-label { width: 130px; flex-shrink: 0; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+  .chance-bar-wrap { flex: 1; background: #0f172a; border-radius: 4px; height: 22px; overflow: hidden; position: relative; }
+  .chance-bar { height: 100%; display: flex; align-items: center; padding-left: 10px; font-size: 0.72rem; font-weight: 600; border-radius: 4px; }
+  .chance-floor-marker { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--red); }
+
+  /* Q&A */
+  .qa-block {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+  }
+
+  .qa-q {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .qa-a { font-size: 0.875rem; color: var(--muted); line-height: 1.75; }
+  .qa-a strong { color: var(--text); }
+  .qa-a p { margin-top: 8px; }
+  .qa-a p:first-child { margin-top: 0; }
+
+  /* DIVIDER */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin-top: 64px;
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <span>SLM from Scratch</span>
+    <p>Phase 5: Evaluation</p>
+  </div>
+
+  <details class="nav-group phase-dd">
+    <summary><span class="pnum">5</span>Phase 5 · Evaluation<span class="chev">▶</span></summary>
+    <div class="phase-dd-body">
+      <a class="nav-link phase" href="../phase1/how-transformers-work.html"><span class="pnum">1</span>Transformers</a>
+      <a class="nav-link phase" href="../phase2/tokenization.html"><span class="pnum">2</span>Tokenization + Data</a>
+      <a class="nav-link phase" href="../phase3/scaling-laws.html"><span class="pnum">3</span>Scaling Laws</a>
+      <a class="nav-link phase" href="../phase4/distillation.html"><span class="pnum">4</span>Distillation</a>
+      <a class="nav-link phase active" href="#roadmap"><span class="pnum">5</span>Evaluation</a>
+    </div>
+  </details>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Start Here</div>
+    <a class="nav-link" href="#roadmap">Phase 5 start to finish</a>
+    <a class="nav-link" href="#phase-shift">What changed from Phase 4</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Concepts</div>
+    <a class="nav-link" href="#what-is-a-benchmark">What is a benchmark</a>
+    <a class="nav-link" href="#random-chance">The random-chance floor</a>
+    <a class="nav-link" href="#error-analysis">Error analysis</a>
+    <a class="nav-link" href="#feedback-loop">The feedback loop</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">The Setup</div>
+    <a class="nav-link" href="#what-exists">What's available to evaluate</a>
+    <a class="nav-link" href="#build">How this will actually run</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Q&amp;A</div>
+    <a class="nav-link" href="#q-why-not-just-loss">Isn't validation loss enough?<span class="badge">Q</span></a>
+    <a class="nav-link" href="#q-worth-it">Is the feedback loop worth repeating Phase 4's teacher cost?<span class="badge">Q</span></a>
+    <a class="nav-link" href="#q-random-result">What if every model just scores at random chance?<span class="badge">Q</span></a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <div class="hero">
+    <div class="hero-eyebrow">Phase 5: Evaluation &amp; Feedback Loop</div>
+    <h1>Stop trusting the<br>loss curve. Check the work.</h1>
+    <p>Every phase so far has been judged by a single number: validation loss. Phase 5 asks a harder question — what can the model actually <em>do</em>, on tasks it was never directly trained to solve? Not started yet — this page is the map for when it does.</p>
+    <div class="analogy" style="margin-top:20px">
+      <strong>Not a today task:</strong> installing lm-eval-harness, writing a small adapter for this project's custom model, and being honest about what a 50-150M model can realistically show on benchmarks built for much bigger models. See <a href="sprint-plan.md" style="color:var(--accent-soft)">docs/phase5/sprint-plan.md</a> for the concrete steps.
+    </div>
+  </div>
+
+  <!-- ROADMAP -->
+  <section class="section" id="roadmap">
+    <div class="section-label">Start here</div>
+    <h2>Phase 5 from start to finish</h2>
+    <p>Benchmark what already exists, look closely at what it gets wrong, understand the loop that would fix it — and be honest about whether running that loop for real is worth repeating Phase 4's cost question.</p>
+
+    <div class="pipeline" style="margin-top:22px">
+      <div class="pipe-box">Install + adapt lm-eval</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box hi-orange">Benchmark real checkpoints</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box">Error analysis</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-box">Targeted data + iterate?</div>
+    </div>
+
+    <div class="card" style="margin-top:20px;border-left:3px solid var(--blue)">
+      <h3 style="color:var(--blue)">What "done" looks like</h3>
+      <p>Real benchmark numbers for this project's actual checkpoints (not a hypothetical distilled model — Phase 4 concluded without one), a look at what the models actually get wrong, and an honest decision about whether the full generate-and-retrain loop is worth running given what Phase 4 already taught about teacher-cost tradeoffs.</p>
+    </div>
+  </section>
+
+  <!-- PHASE SHIFT -->
+  <section class="section" id="phase-shift">
+    <div class="section-label">Context</div>
+    <h2>What changed from Phase 4</h2>
+    <p>Phase 4 was one investigation into a specific technique (distillation) that ran into a real hardware constraint. Phase 5 is broader — it's not asking "does one technique work," it's asking "how good are the models this project actually produced, on tasks nobody explicitly trained them for."</p>
+
+    <div class="compare-grid">
+      <div class="compare-card phase4">
+        <div class="phase-tag">Phase 4</div>
+        <h3>One technique, one blocker</h3>
+        <ul>
+          <li>Judged by: does distillation beat a baseline</li>
+          <li>Hit a hard architectural wall (tokenizer mismatch)</li>
+          <li>Concluded as investigation, not a trained model</li>
+        </ul>
+      </div>
+      <div class="compare-card phase5">
+        <div class="phase-tag">Phase 5</div>
+        <h3>Every checkpoint, judged differently</h3>
+        <ul>
+          <li>Judged by: task accuracy, not just loss</li>
+          <li>No single blocker — just a scale reality to manage</li>
+          <li>Produces real numbers for real checkpoints either way</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT IS A BENCHMARK -->
+  <section class="section" id="what-is-a-benchmark">
+    <div class="section-label">Concept</div>
+    <h2>What is a benchmark</h2>
+    <p>Validation loss (everything Phases 1-3 optimized for) measures one thing: how surprised the model is by the next real token in held-out text. It never asks whether the model can actually reason, recall a fact, or solve a problem — a model can have great loss and still fail completely at tasks that require using what it learned.</p>
+    <p>A benchmark is a fixed set of questions with known correct answers, designed to test a specific capability directly — commonsense reasoning (HellaSwag, PIQA), grade-school math (GSM8K), or code generation (HumanEval). Instead of "how surprised was the model," it asks "did the model get the right answer."</p>
+
+    <div class="analogy">
+      <strong>Analogy:</strong> A student who's read every textbook cover to cover (low "surprise" at anything in the books) isn't the same as a student who can pass the actual exam. Validation loss is the reading; benchmarks are the exam.
+    </div>
+  </section>
+
+  <!-- RANDOM CHANCE -->
+  <section class="section" id="random-chance">
+    <div class="section-label">Concept</div>
+    <h2>The random-chance floor</h2>
+    <p>Most of these benchmarks are multiple-choice — pick the correct continuation from 4 options. That means guessing randomly, with zero understanding, already scores <strong>~25%</strong>. A model has to clear that floor by a meaningful margin before a score means anything at all.</p>
+
+    <div class="chance-row">
+      <div class="chance-label">Random guess</div>
+      <div class="chance-bar-wrap"><div class="chance-bar" style="width:25%;background:rgba(248,113,113,0.3);color:var(--red)">~25%</div></div>
+    </div>
+    <div class="chance-row">
+      <div class="chance-label">This project's models</div>
+      <div class="chance-bar-wrap"><div class="chance-bar" style="width:28%;background:rgba(251,191,36,0.25);color:var(--yellow)">? — untested</div></div>
+    </div>
+    <div class="chance-row">
+      <div class="chance-label">GPT-2 124M</div>
+      <div class="chance-bar-wrap"><div class="chance-bar" style="width:45%;background:rgba(52,211,153,0.25);color:var(--green)">reference point</div></div>
+    </div>
+
+    <div class="card" style="margin-top:16px;border-left:3px solid var(--yellow)">
+      <h3 style="color:var(--yellow)">This is the honest expectation, not a hedge</h3>
+      <p>This project's largest model (150M params, 2B tokens at most) is trained on a tiny fraction of the compute that models like GPT-2-124M or SmolLM-135M saw. Scoring near the random-chance floor on several benchmarks is a realistic, likely outcome — not evidence something's broken. Deciding that's an acceptable, reportable result <em>before</em> running anything is exactly the kind of honesty this project has stuck to throughout (see Phase 2's tokenizer regression, Phase 3's surprising Run 3, Phase 4's tokenizer-mismatch finding).</p>
+    </div>
+  </section>
+
+  <!-- ERROR ANALYSIS -->
+  <section class="section" id="error-analysis">
+    <div class="section-label">Concept</div>
+    <h2>Error analysis</h2>
+    <p>A single benchmark score (say, "34% on PIQA") hides everything interesting. Error analysis means actually reading the model's worst-scoring examples and asking why it got each one wrong — is it a tokenization artifact (the 32K BPE tokenizer splitting a key word oddly), a genuine reasoning gap, or just a question requiring knowledge the model never saw enough of in training to encode.</p>
+
+    <div class="analogy">
+      <strong>Analogy:</strong> A teacher who only sees "62% on the exam" learns nothing about how to help the student. A teacher who reads the specific wrong answers sees the pattern — maybe every missed question involves fractions, or every one is a word problem with extra irrelevant numbers. The score is a symptom; reading the actual mistakes is the diagnosis.
+    </div>
+  </section>
+
+  <!-- FEEDBACK LOOP -->
+  <section class="section" id="feedback-loop">
+    <div class="section-label">Concept</div>
+    <h2>The feedback loop</h2>
+    <p>Once you know <em>what kind</em> of question the model fails, the natural next step is generating more training examples that specifically target that weakness — math questions with step-by-step solutions if math was the gap, "explain your reasoning" style data if commonsense was the gap — then fine-tuning on that targeted data and re-running the benchmarks to see if the gap actually closed.</p>
+
+    <div class="loop-steps" style="margin-top:18px">
+      <div class="loop-step">
+        <div class="num">1</div>
+        <div class="body">
+          <h4>Benchmark</h4>
+          <p>Run the eval suite, get real scores per category.</p>
+        </div>
+      </div>
+      <div class="loop-step">
+        <div class="num">2</div>
+        <div class="body">
+          <h4>Diagnose</h4>
+          <p>Read the actual wrong answers, categorize the failure modes.</p>
+        </div>
+      </div>
+      <div class="loop-step">
+        <div class="num">3</div>
+        <div class="body">
+          <h4>Generate targeted data</h4>
+          <p>Use a teacher model to produce examples aimed at the specific gap found.</p>
+        </div>
+      </div>
+      <div class="loop-step">
+        <div class="num">4</div>
+        <div class="body">
+          <h4>Retrain, re-benchmark</h4>
+          <p>Fine-tune on the targeted data, run the same benchmarks again, see if the gap closed. Repeat.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;border-left:3px solid var(--purple)">
+      <h3 style="color:#d8b4fe">This is RLHF's feedback loop, without the "RL"</h3>
+      <p>Production RLHF pipelines run a version of exactly this loop — find weaknesses, generate targeted data (often from human feedback or a reward model instead of a teacher LLM), retrain, repeat. Doing it manually here, with a teacher model standing in for the feedback signal, is the same shape of process at a scale you can actually see and understand end to end.</p>
+    </div>
+  </section>
+
+  <!-- WHAT EXISTS -->
+  <section class="section" id="what-exists">
+    <div class="section-label">The setup</div>
+    <h2>What's available to evaluate</h2>
+    <p><code>docs/plan.md</code>'s original Task 5.1 assumed a distilled model would exist to compare — it doesn't (Phase 4 concluded as an investigation, not a trained model). What's real and checkable:</p>
+
+    <table>
+      <tr>
+        <th>Checkpoint</th>
+        <th>Tokenizer</th>
+        <th>Tokens seen</th>
+        <th>Val loss</th>
+      </tr>
+      <tr>
+        <td>Phase 1 — 50M</td>
+        <td>GPT-2 (50,257)</td>
+        <td>~80M</td>
+        <td>5.12</td>
+      </tr>
+      <tr>
+        <td>Phase 1 — 77M</td>
+        <td>GPT-2 (50,257)</td>
+        <td>~80M</td>
+        <td>5.24</td>
+      </tr>
+      <tr>
+        <td>Phase 3 — 75M</td>
+        <td>Own 32K BPE</td>
+        <td>500M</td>
+        <td>5.2171</td>
+      </tr>
+      <tr>
+        <td>Phase 3 — 75M</td>
+        <td>Own 32K BPE</td>
+        <td>2B</td>
+        <td>3.8972</td>
+      </tr>
+      <tr>
+        <td>Phase 3 — 150M</td>
+        <td>Own 32K BPE</td>
+        <td>500M</td>
+        <td>3.7578</td>
+      </tr>
+    </table>
+
+    <div class="card" style="margin-top:16px;border-left:3px solid var(--accent)">
+      <h3 style="color:var(--accent-soft)">The harness problem</h3>
+      <p>lm-evaluation-harness expects a HuggingFace-style model (an <code>AutoModelForCausalLM</code>-shaped interface). This project's <code>GPT</code> class and custom BPE tokenizer aren't that — a small adapter implementing the harness's <code>LM</code> interface (mainly <code>loglikelihood</code>, which is all most multiple-choice benchmarks actually need) is required first. Infrastructure, not a re-architecture — see <a href="sprint-plan.md" style="color:var(--accent-soft)">sprint-plan.md</a>.</p>
+    </div>
+  </section>
+
+  <!-- BUILD -->
+  <section class="section" id="build">
+    <div class="section-label">Build it</div>
+    <h2>How this will actually run</h2>
+    <p>Full breakdown in <a href="sprint-plan.md" style="color:var(--accent-soft)">docs/phase5/sprint-plan.md</a>. Short version:</p>
+
+    <div class="loop-steps" style="margin-top:18px">
+      <div class="loop-step">
+        <div class="num">1</div>
+        <div class="body">
+          <h4>Install lm-eval-harness, write the adapter</h4>
+          <p><code>pip install lm-eval</code> (0.4.12 available), then a thin wrapper around this project's <code>GPT</code> + tokenizer implementing <code>loglikelihood</code>. Infrastructure — happy to write this part.</p>
+        </div>
+      </div>
+      <div class="loop-step">
+        <div class="num">2</div>
+        <div class="body">
+          <h4>Benchmark the real checkpoints</h4>
+          <p>All 5 of this project's own models, 2-4 benchmarks (not the full 6-task list blind), optionally GPT-2-124M/SmolLM-135M from HuggingFace as off-the-shelf reference points.</p>
+        </div>
+      </div>
+      <div class="loop-step">
+        <div class="num">3</div>
+        <div class="body">
+          <h4>Read the actual wrong answers</h4>
+          <p>Per-example output logging, categorized by hand — tokenization artifact, reasoning gap, or scale limitation. No teacher needed for this step.</p>
+        </div>
+      </div>
+      <div class="loop-step">
+        <div class="num">4</div>
+        <div class="body">
+          <h4>Decide on the feedback loop after seeing real results</h4>
+          <p>Targeted data generation needs the teacher's decode throughput (~81 tok/s, the slow regime measured in Phase 4) — worth scoping against what Step 2/3 actually show, not committing blind.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Q&A -->
+  <hr class="divider">
+
+  <section class="section" id="q-why-not-just-loss">
+    <div class="section-label">Q&amp;A</div>
+    <h2>Questions</h2>
+
+    <div class="qa-block">
+      <div class="qa-q">Phase 3 already compared models by validation loss. Isn't that enough to know which one is "better"?</div>
+      <div class="qa-a">
+        <p>Loss tells you how well a model predicts held-out text from the same distribution it trained on — it says nothing about whether the model can use that knowledge to answer a question, solve a problem, or reason through steps it wasn't directly shown. Two models can have near-identical loss and score very differently on an actual task, especially at this scale, where small differences in what got memorized vs. generalized can matter more than the aggregate loss number suggests.</p>
+      </div>
+    </div>
+
+    <div class="qa-block" id="q-worth-it">
+      <div class="qa-q">Given what Phase 4 found about the teacher's cost, is running the full feedback loop (Task 5.3-5.4) even worth it?</div>
+      <div class="qa-a">
+        <p>Genuinely uncertain, same as Phase 4 — and worth deciding with real data in hand rather than in advance. The feedback loop's precondition is a model with <em>partial</em> competence and a few isolated weak spots to target. If Step 2's benchmarks come back near the random-chance floor across the board (a real possibility given this project's scale), that's a sign the model doesn't have isolated gaps to patch — it has a general scale limitation, which targeted synthetic data can't fix regardless of how much teacher time you spend generating it.</p>
+        <p>So the honest plan is: benchmark first, look at the actual failure patterns, and only then decide whether a small, scoped round of targeted data is worth the same kind of teacher-generation cost Phase 4 weighed — not commit to the full multi-round loop from <code>docs/plan.md</code> before knowing whether the precondition for it to work is even met.</p>
+      </div>
+    </div>
+
+    <div class="qa-block" id="q-random-result">
+      <div class="qa-q">What if every model just scores at random chance on every benchmark?</div>
+      <div class="qa-a">
+        <p>That would still be a real, reportable result — and consistent with this project's own established pattern of treating an honest negative finding as valuable, not as something to bury (Phase 2's tokenizer regression, Phase 4's tokenizer-mismatch blocker). "Here's the compute/data threshold below which standard benchmarks show no signal, measured directly rather than assumed" is a genuinely useful thing to know and document, and arguably a more interesting portfolio finding than a clean win would be — it's exactly the kind of scale intuition Phase 3's Chinchilla analysis was already building toward.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  const links = document.querySelectorAll('.nav-link:not(.phase)');
+  const sections = document.querySelectorAll('section[id]');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`.nav-link[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-15% 0px -70% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
