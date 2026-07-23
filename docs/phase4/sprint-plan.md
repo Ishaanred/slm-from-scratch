@@ -33,9 +33,20 @@ These are still real numbers to revisit once Step 2's actual batching is built (
 
 ---
 
-## Step 1 — Pick the student's size
+## Step 1 — Student size — decided: 300M
 
-`docs/plan.md` suggests 150M-500M. Phase 3 gives one real input here: Run 3 (150M @ 500M tokens) came out with the lowest val loss of all three Phase 3 runs, beating both the 75M-at-same-data and 75M-at-4x-data runs (see `docs/phase3/results.md`). That's a data point in favor of 150M as a reasonable starting size — not a settled decision, and not mine to make. Whether it generalizes to a distillation setting (different loss, different data regime) is worth thinking through before locking in.
+`docs/plan.md` suggests 150M-500M. Phase 3's Run 3 (150M @ 500M tokens, lowest loss of the three runs) was the initial lean, but once it was confirmed teacher and student never run concurrently (see Step 2's note below), VRAM stopped being the limiting factor and the decision became "how big, not whether it fits."
+
+**Real numbers checked before deciding**, same measure-don't-assume approach as Phase 3's grid:
+
+| Config | Actual params | VRAM (batch=8, unless noted) | Throughput | Time for 500M tokens |
+|---|---|---|---|---|
+| 75M | 69.4M | 4.94 GB — measured (Phase 3) | 124,000 tok/s — measured (Phase 3) | ~1.1h |
+| 150M | 135.0M | 6.70 GB — measured (Phase 3) | 71,000 tok/s — measured (Phase 3) | ~2.0h |
+| **300M** | **268.1M** | **9.60 GB — measured** | **~36,700 tok/s — measured** | **~3.8h** |
+| 500M | 555.5M | 11.53 GB @ batch=4 — measured (OOMs at batch=8) | ~16,000 tok/s — estimated only | ~8.5h |
+
+**Decided: 300M** (268.1M actual params, 16L/16H/1024E). Fits comfortably at the full batch=8 (9.60GB of 16.3GB, no batch-size compromise needed unlike 500M), and will be the largest model this project has trained — appropriate, since distillation is meant to let a smaller model punch above its raw parameter count, and 300M is the ceiling where that's still true without fighting the hardware for room.
 
 ---
 
@@ -66,7 +77,7 @@ Distilled student at the chosen size, plus a from-scratch baseline on the same d
 ## Order of work
 
 1. ~~Step 0 (teacher setup + throughput measurement)~~ — **done**. Container running, real batched throughput measured (1119.9 tok/s prefill vs 81.3 tok/s decode). Local generation is viable — no need for the RunPod cloud fallback.
-2. Step 1 (student size) — quick decision, informed by Phase 3's data
-3. Step 2 (logit generation harness) — build against `http://localhost:8081/v1/chat/completions` (or a lower-level completion endpoint with logprobs), using the measured throughput to size the real token budget
+2. ~~Step 1 (student size)~~ — **done**. 300M (268.1M actual params), fits at full batch=8 (9.60GB), ~36,700 tok/s measured.
+3. Step 2 (logit generation harness) — build against `http://localhost:8081/v1/chat/completions` (or a lower-level completion endpoint with logprobs), using the measured throughput to size the real token budget. Remember to restart the teacher container first — it was stopped to free VRAM for Step 1's testing.
 4. Step 3 (loss variants, small-scale comparison) — yours to implement, infra provided
 5. Step 4 (full run + baseline) — the bulk of the compute time

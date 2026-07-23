@@ -783,8 +783,8 @@
       <div class="loop-step">
         <div class="num">2</div>
         <div class="body">
-          <h4>Pick the student size</h4>
-          <p>Phase 3's Run 3 (150M beat both 75M runs at matched and 4x data) is one real input here — not a settled decision.</p>
+          <h4>Student size — decided: 300M</h4>
+          <p>268.1M actual params (16L/16H/1024E), fits at the full batch=8 (9.60GB of 16.3GB, measured), ~36,700 tok/s measured. Confirming teacher and student never share VRAM (previous step) removed size as a hardware constraint, so the decision became "how big is worth it" rather than "what barely fits" — this will be the largest model this project has trained.</p>
         </div>
       </div>
       <div class="loop-step">
