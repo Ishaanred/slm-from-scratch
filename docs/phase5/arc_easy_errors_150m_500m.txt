@@ -1,0 +1,122 @@
+=== phase3_150m_500m / arc_easy: 1607 wrong of 2376 (67.6%) ===
+
+Q: Which statement best explains why photosynthesis is the foundation of most food webs?
+  (A) Sunlight is the source of energy for nearly all ecosystems. [CORRECT]
+  (B) Most ecosystems are found on land instead of in water.
+  (C) Carbon dioxide is more available than other gases. [MODEL PICKED]
+  (D) The producers in all ecosystems are plants.
+
+Q: Which piece of safety equipment is used to keep mold spores from entering the respiratory system?
+  (A) safety goggles
+  (B) breathing mask [CORRECT]
+  (C) rubber gloves [MODEL PICKED]
+  (D) lead apron
+
+Q: Meiosis is a type of cell division in which germ cells divide to produce haploid cells. Where does meiosis occur?
+  (A) brain cells
+  (B) bone cells
+  (C) muscle cells [MODEL PICKED]
+  (D) ovary cells [CORRECT]
+
+Q: Which characteristic describes the texture of a kitten's fur?
+  (A) gray
+  (B) warm [MODEL PICKED]
+  (C) long
+  (D) soft [CORRECT]
+
+Q: Which best describes the structure of an atom?
+  (A) a lightweight core surrounded by neutral particles
+  (B) a massive core surrounded by negatively-charged particles [CORRECT]
+  (C) a network of interacting positive and negative particles [MODEL PICKED]
+  (D) overlapping layers of neutral, positive, and negative particles
+
+Q: To express the distance between the Milky Way galaxy and other galaxies, the most appropriate unit of measurement is the
+  (A) meter.
+  (B) kilometer. [MODEL PICKED]
+  (C) light-year. [CORRECT]
+  (D) astronomical unit.
+
+Q: Students are investigating the effects of different fertilizers on plant growth. Which units would be best to measure the mass of the fertilizer used?
+  (A) meters [MODEL PICKED]
+  (B) centimeters
+  (C) grams [CORRECT]
+  (D) milligrams
+
+Q: Plants use sunlight to make
+  (A) soil.
+  (B) minerals.
+  (C) food. [CORRECT]
+  (D) water. [MODEL PICKED]
+
+Q: When trees develop leaves in the spring, 10 changes occur on the forest floor. Why does the development of leaves cause changes on the forest floor?
+  (A) Rainfall increases.
+  (B) Sunlight is reduced. [CORRECT]
+  (C) Wind speed increases. [MODEL PICKED]
+  (D) Animal migration is stopped.
+
+Q: A student throws a ball into the air. While the ball travels up, the speed of the ball decreases. What force causes the ball to slow while traveling up?
+  (A) electricity
+  (B) gravity [CORRECT]
+  (C) magnetism
+  (D) tension [MODEL PICKED]
+
+Q: Which of these will most likely harm a habitat?
+  (A) planting trees
+  (B) water pollution [CORRECT]
+  (C) rainfall [MODEL PICKED]
+  (D) sunlight
+
+Q: All living and nonliving material is composed of
+  (1) air
+  (2) elements [CORRECT]
+  (3) water [MODEL PICKED]
+  (4) soil
+
+Q: As global temperatures increase, certain organisms will be more affected than others. The changes associated with global warming may result in an increase in sea level. Which organisms will be affected most as a result of the change in sea level?
+  (A) birds that eat fish from shallow waters [MODEL PICKED]
+  (B) fish that live in coral reefs in shallow waters [CORRECT]
+  (C) mammals that swim in cold, deep ocean waters
+  (D) crustaceans at the bottom of deep sea ocean waters
+
+Q: When an igneous intrusion comes into contact with surrounding rock, the surrounding rock will
+  (A) erode. [MODEL PICKED]
+  (B) foliate.
+  (C) precipitate.
+  (D) recrystallize. [CORRECT]
+
+Q: A research scientist writes a paper on the initial regrowth of a forest after a fire has damaged the entire ecosystem. Which title would be best for the paper?
+  (A) Primary Succession
+  (B) Stable Communities [MODEL PICKED]
+  (C) Climax Communities
+  (D) Secondary Succession [CORRECT]
+
+Q: Where do plants get most of the energy they need to live and grow?
+  (A) water [MODEL PICKED]
+  (B) soil
+  (C) air
+  (D) sunlight [CORRECT]
+
+Q: Which is a statement about climate?
+  (A) The average temperature yesterday was 15°C. [MODEL PICKED]
+  (B) The temperature range today was 10°C to 20°C.
+  (C) The high temperature tomorrow will be 14°C.
+  (D) The average high temperature in May is 20°C. [CORRECT]
+
+Q: While on a movie set, a stuntman jumps off the roof of a building. As he falls toward an airbag, what is increasing?
+  (A) gravity [MODEL PICKED]
+  (B) wind velocity
+  (C) kinetic energy [CORRECT]
+  (D) potential energy
+
+Q: Biologists conduct investigations to learn about living organisms. Which method helps reduce bias during an investigation?
+  (A) developing a hypothesis after collecting data in the investigation
+  (B) limiting the amount of background research before the investigation [MODEL PICKED]
+  (C) designing an investigation with repeated trials during the investigation [CORRECT]
+  (D) obtaining other opinions concerning what should happen during the investigation
+
+Q: Which factor is most likely to cause the number of rabbits living in an area to increase?
+  (1) less water
+  (2) fewer predators [CORRECT]
+  (3) lack of shelter
+  (4) limited food [MODEL PICKED]
+
