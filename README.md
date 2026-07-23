@@ -71,6 +71,7 @@ Run 10 controlled training runs across model sizes (75M, 150M, 300M) and token c
 **You'll understand:** how model size, data size, and compute interact — and how to extrapolate.
 
 **Deliverable:** Scaling law plots from your own experiments.
+- [x] Published all 3 checkpoints to Hugging Face: [redredredredredred/slm-from-scratch-phase3-scaling](https://huggingface.co/redredredredredred/slm-from-scratch-phase3-scaling)
 
 ---
 
