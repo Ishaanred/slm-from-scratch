@@ -10,6 +10,12 @@
 | 2 | 75M config (8L/8H/576E) | 69.4M | 2B | ~28.8x | **3.8972** |
 | 3 | 150M config (12L/12H/768E) | 135.0M | 500M | ~3.7x | **3.7578** |
 
+## Train loss convergence
+
+![Train loss convergence, raw and EMA-smoothed](train_loss_convergence.png)
+
+The spike described below is visible here directly in Run 2's raw (faint) curve around iter 50,000.
+
 ## Loss vs. tokens seen
 
 ![Validation loss vs tokens](loss_vs_tokens.png)

@@ -1,8 +1,9 @@
 """
-Plots for Phase 3's 3 training runs: loss vs tokens, loss vs FLOPs.
+Plots for Phase 3's 3 training runs: loss vs tokens, loss vs FLOPs,
+train-loss convergence.
 
-Reads the per-eval val loss lines straight from the training logs (no
-hand-copied numbers) and renders two PNGs into docs/phase3/.
+Reads the per-iter train loss and per-eval val loss lines straight from the
+training logs (no hand-copied numbers) and renders PNGs into docs/phase3/.
 
 Run: python docs/phase3/plot_results.py
 """
@@ -23,6 +24,7 @@ RUNS = {
 }
 
 VAL_RE = re.compile(r"iter (\d+): val loss ([\d.]+)")
+TRAIN_RE = re.compile(r"iter (\d+): loss ([\d.]+),")
 
 
 def load_run(name):
@@ -35,6 +37,30 @@ def load_run(name):
                 iters.append(int(m.group(1)))
                 losses.append(float(m.group(2)))
     return iters, losses
+
+
+def load_train_loss(name):
+    """Per-iter train loss (logged every 50 iters), unlike the sparser val loss."""
+    path = os.path.join(LOG_DIR, f"phase3_{name}.log")
+    iters, losses = [], []
+    with open(path) as f:
+        for line in f:
+            m = TRAIN_RE.search(line)
+            if m:
+                iters.append(int(m.group(1)))
+                losses.append(float(m.group(2)))
+    return iters, losses
+
+
+def ema(values, alpha=0.1):
+    """Exponential moving average — the raw per-50-iter train loss is too
+    noisy to read as a trend on its own."""
+    smoothed = []
+    prev = values[0]
+    for v in values:
+        prev = alpha * v + (1 - alpha) * prev
+        smoothed.append(prev)
+    return smoothed
 
 
 def main():
@@ -90,7 +116,26 @@ def main():
     fig.savefig(os.path.join(OUT_DIR, "loss_vs_flops.png"), dpi=150)
     plt.close(fig)
 
-    print("Wrote loss_vs_tokens.png and loss_vs_flops.png to", OUT_DIR)
+    # --- Plot 3: train loss convergence (raw + EMA), per run ---
+    fig, ax = plt.subplots(figsize=(8, 5.5))
+    for name, cfg in RUNS.items():
+        iters, losses = load_train_loss(name)
+        ax.plot(iters, losses, color=cfg["color"], linestyle=cfg["ls"],
+                linewidth=0.6, alpha=0.25)
+        ax.plot(iters, ema(losses), color=cfg["color"], linestyle=cfg["ls"],
+                linewidth=2, label=cfg["label"])
+    ax.set_yscale("log")
+    ax.set_xlabel("Training iteration")
+    ax.set_ylabel("Train loss (log scale)")
+    ax.set_title("Phase 3: train loss convergence (faint = raw, bold = EMA)")
+    ax.legend(frameon=False)
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(os.path.join(OUT_DIR, "train_loss_convergence.png"), dpi=150)
+    plt.close(fig)
+
+    print("Wrote loss_vs_tokens.png, loss_vs_flops.png, and train_loss_convergence.png to", OUT_DIR)
 
 
 if __name__ == "__main__":
