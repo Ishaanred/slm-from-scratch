@@ -40,5 +40,7 @@ wandb/
 .DS_Store
 *.swp
 
-# local claude context/settings (not for the public repo)
+# local AI-assistant context/settings (not for the public repo)
 .claude/
+.agents/
+CLAUDE.md

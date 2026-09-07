@@ -6,8 +6,6 @@ A hands-on, end-to-end curriculum covering every step of the LLM training pipeli
 
 **Hardware:** RTX 5070 Ti (16GB VRAM) · **Timeline:** ~2 months, 4-6 hrs/day
 
-**New here and want the concepts without the project-specific narrative?** See [LLM-Cookbook](https://github.com/Ishaanred/LLM-Cookbook), a tool-agnostic, modular reference (transformers, tokenization, fine-tuning, distillation, scaling laws, evaluation, and more) you can look up topic by topic, not read start to finish. (Private for now, going public once it's ready.)
-
 ---
 
 ## Current Status
@@ -21,7 +19,7 @@ A hands-on, end-to-end curriculum covering every step of the LLM training pipeli
 | 5. Evaluation & Feedback Loop | **Complete** |
 
 **Phase 1 — complete:**
-- [x] Understand transformer architecture — see [`docs/how-transformers-work.html`](docs/how-transformers-work.html)
+- [x] Understand transformer architecture — see [`docs/phase1/how-transformers-work.html`](docs/phase1/how-transformers-work.html)
 - [x] Write `src/model.py` — GPT, CausalSelfAttention, MLP, Block from scratch in PyTorch
 - [x] Download and process OpenWebText dataset (~38GB, 8M documents)
 - [x] Tokenize data with GPT-2 tokenizer — produces 17GB `train.bin` (~8.5B tokens)
@@ -176,12 +174,14 @@ slm-from-scratch/
 │   │   ├── model.py             # GPT transformer — written from scratch
 │   │   ├── train.py             # Training loop (GPT-2 vocab, 50,257)
 │   │   └── generate.py          # Text generation from a checkpoint
-│   └── phase2/                  # Tokenization + Data Engineering
+│   ├── phase2/                  # Tokenization + Data Engineering
 │       ├── model.py             # copy of the transformer
 │       ├── train.py             # Training loop (own 32K vocab)
 │       ├── train_tokenizer.py   # Train BPE at 8K/16K/32K
 │       ├── evaluate_tokenizer.py# Compression ratio vs GPT-2
 │       └── bpe_*/               # Trained tokenizers (not in git)
+│   ├── phase3/                  # Scaling-law training runs
+│   └── phase5/                  # Benchmark evaluation and error analysis
 ├── data/
 │   ├── openwebtext/             # Raw dataset (~38GB, not in git)
 │   ├── phase1/
@@ -196,7 +196,10 @@ slm-from-scratch/
 └── docs/
     ├── plan.md                  # Full 2-month roadmap
     ├── phase1/                  # how-transformers-work.html + results.md
-    └── phase2/                  # tokenization.html + sprint-plan.md
+    ├── phase2/                  # tokenization.html + sprint-plan.md
+    ├── phase3/                  # scaling laws, results, and plots
+    ├── phase4/                  # distillation investigation
+    └── phase5/                  # evaluation results and error analysis
 ```
 
 ---
